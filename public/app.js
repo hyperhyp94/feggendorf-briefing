@@ -168,12 +168,18 @@ function renderFooter(){
 function setMode(m){
   mode=m;
   $('btnDay').setAttribute('aria-pressed',m==='day'); $('btnWeek').setAttribute('aria-pressed',m==='week');
-  $('dayview').classList.toggle('hidden',m!=='day'); $('weekview').classList.toggle('hidden',m!=='week');
-  $('selNote').textContent=m==='day'?'Tagesansicht — ein Tag, Stunde für Stunde.':'Wochenansicht — alle 10 Tage im Vergleich.';
+  $('btnWindy').setAttribute('aria-pressed',m==='windy');
+  $('dayview').classList.toggle('hidden',m!=='day');
+  $('weekview').classList.toggle('hidden',m!=='week');
+  $('windyview').classList.toggle('hidden',m!=='windy');
+  $('modelcompare').classList.toggle('hidden',m==='windy');
+  $('selNote').textContent=m==='day'?'Tagesansicht — ein Tag, Stunde für Stunde.':m==='week'?'Wochenansicht — alle 10 Tage im Vergleich.':'Windy.com — interaktive Windkarte';
   if(m==='week') renderWeek();
+  if(m==='windy') loadWindy();
 }
 $('btnDay').onclick=()=>setMode('day');
 $('btnWeek').onclick=()=>setMode('week');
+$('btnWindy').onclick=()=>setMode('windy');
 
 function select(date){
   selected=date;
@@ -184,6 +190,9 @@ function select(date){
   const vf=$('vfly');vf.textContent=f!=null?Math.round(f*100)+'%':'–';vf.style.color=c;
   $('vsub').innerHTML=`<b>${d.weekday}, ${dt.getDate()}. ${MON[dt.getMonth()]}</b> — ${subText(d.verdict.level)} · XC ${d.paraglidable.xc!=null?Math.round(d.paraglidable.xc*100):'–'}%`;
   if(mode==='day') renderDay(d);
+  renderWindRose(d);
+  renderCloudLayers(d);
+  renderModelComparison(d);
 }
 
 function hoursFor(date){
@@ -288,6 +297,99 @@ function renderWeek(){
 }
 
 const fmt=x=>(x==null||x==='')?'–':x;
-function arrow(d){return `<svg class="arrow" viewBox="0 0 40 40" data-tip="dir"><circle cx="20" cy="20" r="18" fill="none" stroke="#284058"/><g transform="rotate(${d} 20 20)"><line x1="20" y1="32" x2="20" y2="8" stroke="#7FE0E8" stroke-width="2.4"/><path d="M20,8 L15,15 M20,8 L25,15" stroke="#7FE0E8" stroke-width="2.4" fill="none"/></g><text x="20" y="23" fill="#5E748B" font-size="7" text-anchor="middle" font-family="JetBrains Mono">N↑</text></svg>`;}
+function arrow(d){return '<svg class="arrow" viewBox="0 0 40 40" data-tip="dir"><circle cx="20" cy="20" r="18" fill="none" stroke="#284058"/><g transform="rotate('+d+' 20 20)"><line x1="20" y1="32" x2="20" y2="8" stroke="#7FE0E8" stroke-width="2.4"/><path d="M20,8 L15,15 M20,8 L25,15" stroke="#7FE0E8" stroke-width="2.4" fill="none"/></g><text x="20" y="23" fill="#5E748B" font-size="7" text-anchor="middle" font-family="JetBrains Mono">N&#8593;</text></svg>';}
+
+/* ---------- wind rose ---------- */
+function renderWindRose(d){
+  var rose=document.getElementById('wrose');
+  var hrs=hoursFor(d.date);
+  if(!hrs||!hrs.length){rose.innerHTML='';return;}
+  var win=hrs.filter(function(h){return h.h>=9&&h.h<=20;});
+  if(!win.length){rose.innerHTML='';return;}
+  var sectors={};
+  var dirs=['N','NNO','NO','ONO','O','OSO','SO','SSO','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  dirs.forEach(function(dd){sectors[dd]={count:0,wsSum:0};});
+  win.forEach(function(h){
+    var idx=Math.round(h.wd/22.5)%16;
+    sectors[dirs[idx]].count++;
+    sectors[dirs[idx]].wsSum+=h.ws||0;
+  });
+  var maxCount=Math.max(1,dirs.reduce(function(m,dd){return Math.max(m,sectors[dd].count);},0));
+  function wroseColor(ws){if(ws>=35)return'#E2655A';if(ws>=25)return'#EF8A4C';if(ws>=15)return'#E3B24A';return'#7FE0E8';}
+  var R=100,cx=110,cy=110;
+  var paths='';
+  dirs.forEach(function(dd,i){
+    var s=sectors[dd];
+    if(!s.count)return;
+    var r=(s.count/maxCount)*R;
+    var avgWS=s.wsSum/s.count;
+    var a1=(i*22.5-90-11.25)*Math.PI/180,a2=((i+1)*22.5-90-11.25)*Math.PI/180;
+    var x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+    var x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
+    paths+='<path d="M'+cx+','+cy+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+r.toFixed(1)+','+r.toFixed(1)+' 0 0,1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="'+wroseColor(avgWS)+'" opacity="0.82" stroke="#13212F" stroke-width="0.5"><title>'+dd+': '+s.count+'x O'+avgWS.toFixed(0)+' km/h</title></path>';
+  });
+  var rings='';
+  for(var r=R/3;r<=R;r+=R/3)rings+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#284058" stroke-width="0.6"/>';
+  var clabels='';
+  [{d:'N',a:-90},{d:'O',a:0},{d:'S',a:90},{d:'W',a:180}].forEach(function(xx){
+    var a=xx.a*Math.PI/180;
+    clabels+='<text x="'+(cx+(R+14)*Math.cos(a)).toFixed(1)+'" y="'+(cy+(R+14)*Math.sin(a)+3).toFixed(1)+'" fill="#5E748B" font-size="9" text-anchor="middle" font-family="JetBrains Mono">'+xx.d+'</text>';
+  });
+  rose.innerHTML='<h4>Windrose 9\u201320h</h4><svg class="wrose-svg" viewBox="0 0 220 220" role="img" aria-label="Windrose">'+rings+paths+clabels+'</svg><div class="wrose-legend"><span><span class="sw" style="background:#7FE0E8"></span>0\u201315</span><span><span class="sw" style="background:#E3B24A"></span>15\u201325</span><span><span class="sw" style="background:#EF8A4C"></span>25\u201335</span><span><span class="sw" style="background:#E2655A"></span>35+ km/h</span></div>';
+}
+
+/* ---------- cloud layers ---------- */
+function renderCloudLayers(d){
+  var cl=document.getElementById('cloudlayers');
+  var sk=d.sky||{};
+  var l=sk.cloud_low,m=sk.cloud_mid,h=sk.cloud_high;
+  if(l==null&&m==null&&h==null){cl.innerHTML='';return;}
+  var maxH=72,tot=sk.cloud_avg_pct||0;
+  var lh=l!=null?Math.max(4,(l/100)*maxH):0;
+  var mh=m!=null?Math.max(4,(m/100)*maxH):0;
+  var hh=h!=null?Math.max(4,(h/100)*maxH):0;
+  cl.innerHTML='<h4>Bew\u00f6lkung 14h</h4><div class="cloudbars"><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-lh)+'px"></div><div class="cloudbar low" style="height:'+lh+'px" data-tip="cloud"></div><div class="cloudbar-label">Tief</div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-mh)+'px"></div><div class="cloudbar mid" style="height:'+mh+'px" data-tip="cloud"></div><div class="cloudbar-label">Mittel</div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-hh)+'px"></div><div class="cloudbar high" style="height:'+hh+'px" data-tip="cloud"></div><div class="cloudbar-label">Hoch</div></div></div><div class="cloud-total">'+tot+'<span>% Gesamt</span></div>';
+}
+
+/* ---------- model comparison ---------- */
+function renderModelComparison(d){
+  var mb=document.getElementById('mbody');
+  var conf=d.confidence||{};
+  var models=conf.models;
+  if(!models){mb.innerHTML='<div class="loading">Keine Multi-Modell-Daten</div>';return;}
+  var entries=[
+    {label:'ICON', key:'icon', color:'#7FE0E8'},
+    {label:'ECMWF',key:'ecmwf',color:'#9C7BD0'},
+    {label:'GFS',  key:'gfs',  color:'#E3B24A'}
+  ];
+  var gArr=[],rArr=[];
+  entries.forEach(function(e){var m=models[e.key];if(m){if(m.gust!=null)gArr.push(m.gust);if(m.rain!=null)rArr.push(m.rain);}});
+  var minG=Math.min.apply(Math,gArr),maxG=Math.max.apply(Math,gArr);
+  var minR=Math.min.apply(Math,rArr),maxR=Math.max.apply(Math,rArr);
+  function bw(val,arr,low){if(val==null)return'';var best=low?Math.min.apply(Math,arr):Math.max.apply(Math,arr);var worst=low?Math.max.apply(Math,arr):Math.min.apply(Math,arr);return val===best?'best':val===worst?'worst':'';}
+
+  var rows='';
+  entries.forEach(function(e){
+    var m=models[e.key];if(!m)return;
+    rows+='<tr><td style="color:'+e.color+'">'+e.label+'</td><td class="'+bw(m.gust,gArr,true)+'">'+fmt(m.gust)+' km/h</td><td class="'+bw(m.rain,rArr,true)+'">'+fmt(m.rain)+' mm</td><td>'+(conf.models_agree===true?'<span style="color:#4FA47F">\u2713</span>':conf.models_agree===false?'<span style="color:#EF8A4C">\u2717</span>':'\u2013')+'</td></tr>';
+  });
+
+  var gMax=Math.max(maxG,1);
+  var bars='';
+  entries.forEach(function(e){
+    var m=models[e.key];if(!m)return;
+    bars+='<div class="model-bar-row"><span class="mlabel" style="color:'+e.color+'">'+e.label+'</span><div class="mbar" style="width:'+((m.gust||0)/gMax*100)+'%;background:'+e.color+';opacity:.6"></div><span class="mval">'+fmt(m.gust)+'</span></div>';
+  });
+  bars+='<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--ink-faint);margin-top:2px">\u2190 B\u00f6en km/h (relativ zum Maximum)</div>';
+
+  mb.innerHTML='<table class="model-table"><thead><tr><th>Modell</th><th>Max B\u00f6en</th><th>Niederschlag</th><th>Einig?</th></tr></thead><tbody>'+rows+'</tbody></table><div class="model-bars">'+bars+'</div><div style="margin-top:6px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink-faint)">Streuung B\u00f6en: '+(conf.gust_spread_kmh||'\u2013')+' km/h \u00b7 '+(conf.note||'\u2013')+'</div>';
+}
+
+/* ---------- windy ---------- */
+function loadWindy(){
+  var f=document.getElementById('windyframe');
+  if(f.src.indexOf('embed.windy.com')>=0)return;
+  f.src='https://embed.windy.com/embed2.html?lat=52.294&lon=9.377&detailLat=52.294&detailLon=9.377&width=100%&height=480&zoom=9&level=surface&overlay=wind&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1';
+}
 
 load();
