@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flugbriefing · Feggendorf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">
+    <span>Flugbriefing</span><span>·</span><b id="site">Deisterflieger Feggendorf</b><span>·</span>
+    <span id="coords" class="mono"></span><span>·</span><span>Windenschlepp</span>
+  </div>
+
+  <div class="head">
+    <div>
+      <h1 class="verdict-label" id="vlabel">—</h1>
+      <div class="verdict-sub" id="vsub"></div>
+    </div>
+    <div class="flybig">
+      <div class="num" id="vfly" data-tip="fly">—</div>
+      <div class="cap">Paraglidable · fly</div>
+    </div>
+  </div>
+
+  <div class="alertbar" id="alertbar"></div>
+  <div class="nowstrip" id="nowstrip"></div>
+
+  <div class="ribbon-label">
+    <h2>10-Tage-Aussicht</h2>
+    <div class="legend"><span>unten</span><span class="bar"></span><span>los</span></div>
+  </div>
+  <div class="ribbon" id="ribbon"></div>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Ansicht">
+      <button id="btnDay" aria-pressed="true">Tag · stündlich</button>
+      <button id="btnWeek" aria-pressed="false">Woche · täglich</button>
+    </div>
+    <div class="sel-note" id="selNote"></div>
+  </div>
+
+  <div class="panels" id="dayview">
+    <div class="panel">
+      <h3>Wind, Böen & Höhenwind — gewählter Tag</h3>
+      <div class="src" id="wsrc">lädt…</div>
+      <div id="wbody"><div class="loading">⋯ wird geladen</div></div>
+    </div>
+    <div class="panel">
+      <h3>Thermik & Himmel</h3>
+      <div class="src" id="tsrc">DWD ICON</div>
+      <div id="tbody"><div class="loading">⋯</div></div>
+    </div>
+  </div>
+
+  <div id="weekview" class="hidden">
+    <div class="weekwrap">
+      <table class="week" id="weektable">
+        <thead><tr>
+          <th data-tip="fly">fly</th><th data-tip="xc">XC</th><th>Tag</th>
+          <th data-tip="avgWind">Ø Wind</th><th data-tip="maxGust">Max Böe</th>
+          <th data-tip="sun">Sonne</th><th data-tip="precip">Regen</th>
+          <th data-tip="cape">CAPE</th><th data-tip="upper850">Höhenwind 850</th>
+          <th data-tip="confidence">Konf.</th>
+        </tr></thead>
+        <tbody id="weekbody"><tr><td colspan="10" class="loading">⋯</td></tr></tbody>
+      </table>
+    </div>
+    <div class="sel-note" style="margin-top:10px">Werte aggregiert über das Flugfenster 9–20 h · Zeile anklicken springt in die Tagesansicht.</div>
+  </div>
+
+  <div class="dwdlink" id="dwdlink"></div>
+
+  <footer id="footer"></footer>
+</div>
+
+<div id="tip" role="tooltip"></div>
+<script src="app.js"></script>
+</body>
+</html>

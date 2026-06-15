@@ -1,0 +1,15 @@
+{
+  "name": "feggendorf-briefing",
+  "version": "1.0.0",
+  "description": "Paragliding flight-briefing aggregator for Deisterflieger Feggendorf (winch). Free sources only, server-side key, one JSON for an agent.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "briefing": "node -e \"import('./lib/aggregate.js').then(m=>m.buildBriefing()).then(b=>console.log(JSON.stringify(b,null,2)))\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "engines": { "node": ">=18" }
+}
