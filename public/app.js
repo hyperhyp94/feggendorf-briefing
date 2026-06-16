@@ -373,44 +373,74 @@ document.getElementById('btnBriefing').onclick = function() {
 };
 
 function generateBriefing() {
-  if (!B || !B.days || !B.days.length) return 'Keine Daten geladen.';
+  if (!B || !B.days || !B.days.length) return 'Keine Daten.';
   var d0 = B.days[0], d1 = B.days[1];
   function f(x) { return (x == null || x === '') ? '–' : x; }
   function pct(x) { return x != null ? Math.round(x * 100) : '–'; }
-  function flbl(x) { var m = {gusts:'böig',gusts_high:'Starkböen',shear:'Scherung',rain:'Regen',cb:'CB-Gefahr',showers:'Schauer',unstable:'labil'}; return x.map(function(f){return m[f]||f;}).join(', '); }
-  function cvkLbl(r) { var m = {poor:'Schwach',marginal:'Grenzwertig',fair:'Ordentlich',good:'Gut',excellent:'Exzellent'}; return m[r] || r || '–'; }
+  function cvkLbl(r) { var m = {poor:'Schwach',marginal:'Grenzwertig',fair:'Ordentlich',good:'Gut',excellent:'Exzellent'}; return m[r] || '–'; }
+  function flbl(x) { var m = {gusts:'Böig',gusts_high:'Starkböen',shear:'Scherung',rain:'Regen',cb:'CB-Gefahr',showers:'Schauer',unstable:'Labil'}; return x.map(function(f){return m[f]||f;}).join(', '); }
   var w0 = d0.wind || {}, th0 = d0.thermal || {}, sk0 = d0.sky || {}, conf0 = d0.confidence || {};
-  var cvk = B.convek || {};
-  var cur = B.dwd_current || {};
-  var alerts = B.dwd_warnings || [];
+  var cvk = B.convek || {}, cur = B.dwd_current || {}, alerts = B.dwd_warnings || [];
+  var pg = d0.paraglidable || {};
 
-  var txt = '🪂 Feggendorf — ' + d0.weekday + ', ' + d0.date + '\n\n';
-  txt += 'Heute: fly ' + pct(d0.paraglidable.fly) + '% — ' + d0.verdict.label + ' | Convek: ' + cvkLbl(cvk.day_rating) + '\n';
-  txt += 'Wind Ø ' + f(w0.avg_kmh) + ' km/h ' + (w0.dir_card_14||'') + ' · Böen ' + f(w0.max_gust_kmh) + ' km/h (' + f(w0.max_gust_hour) + 'h) · Faktor ' + f(w0.gust_factor) + '×\n';
-  txt += 'Höhenwind 850: ' + f(w0.upper_850_kmh) + ' km/h ' + (w0.upper_850_card||'') + ' · Scherung Δ' + f(w0.shear_kmh) + ' km/h\n';
-  txt += 'Thermik: BLH ' + f(th0.blh_max_m) + ' m · Wolkenbasis ' + f(th0.cloud_base_m) + ' m · CAPE ' + f(th0.cape_max) + ' J/kg\n';
-  txt += 'Bewölkung: ' + f(sk0.cloud_avg_pct) + '% · Regen ' + f(sk0.precip_prob_max) + '%\n';
-  txt += 'Fenster: ' + (d0.best_window.length ? d0.best_window.join(', ') : 'kein klares Fenster') + '\n';
-  if (d0.flags.length) txt += 'Flags: ' + flbl(d0.flags) + '\n';
-  txt += 'Konfidenz: ' + (conf0.models_agree === true ? 'Modelle einig' : conf0.models_agree === false ? 'Modelle uneinig' : '–') + '\n';
+  // Build the natural-language briefing text
+  var txt = '';
+  var flyPct = pct(pg.fly);
+  var flyLabel = (d0.verdict||{}).label || '–';
+  var windDesc = f(w0.avg_kmh) + ' km/h';
+  if (w0.dir_card_14) windDesc += ' aus ' + w0.dir_card_14;
+  if (w0.max_gust_kmh > 25) windDesc += ', böig mit ' + f(w0.max_gust_kmh) + ' km/h Spitzen';
+  else windDesc += ', Böen ' + f(w0.max_gust_kmh) + ' km/h';
+
+  txt += 'Am <b>' + d0.weekday + ', ' + d0.date.split('-')[2] + '.' + d0.date.split('-')[1] + '.</b> zeigt Paraglidable <b>' + flyPct + '% Fly-Wahrscheinlichkeit</b> – das bedeutet „' + flyLabel + '". ';
+  txt += 'Convek bewertet den Tag als <b>' + cvkLbl(cvk.day_rating) + '</b>. ';
+
+  if (flyPct >= 72) txt += 'Die Chancen stehen gut, ';
+  else if (flyPct >= 55) txt += 'Es könnte klappen, ';
+  else if (flyPct >= 40) txt += 'Eher durchwachsen, ';
+  else txt += 'Schwierige Bedingungen, ';
+
+  txt += 'der Wind liegt bei ' + windDesc + '. ';
+  if (th0.blh_max_m > 1500) txt += 'Die Thermik reicht bis etwa ' + f(th0.blh_max_m) + ' m – das ist ordentlich. ';
+  else if (th0.blh_max_m > 800) txt += 'Die Thermik trägt auf rund ' + f(th0.blh_max_m) + ' m. ';
+  else txt += 'Die Thermik ist mit ' + f(th0.blh_max_m) + ' m eher flach. ';
+
+  if (sk0.cloud_avg_pct > 80) txt += 'Allerdings ist der Himmel mit ' + f(sk0.cloud_avg_pct) + '% Bewölkung ziemlich dicht. ';
+  else if (sk0.cloud_avg_pct > 40) txt += 'Der Himmel ist mit ' + f(sk0.cloud_avg_pct) + '% Bewölkung teils bezogen. ';
+  else txt += 'Der Himmel ist mit ' + f(sk0.cloud_avg_pct) + '% recht frei. ';
+
+  if (d0.best_window && d0.best_window.length) txt += 'Das beste Flugfenster liegt zwischen <b>' + d0.best_window.join(', ') + '</b>. ';
+  if (d0.flags.length) txt += 'Zu beachten: ' + flbl(d0.flags) + '. ';
 
   if (d1) {
-    var w1 = d1.wind || {};
-    txt += '\nMorgen (' + d1.weekday + ' ' + d1.date + '): fly ' + pct(d1.paraglidable.fly) + '% — ' + d1.verdict.label + '\n';
-    txt += 'Wind Ø ' + f(w1.avg_kmh) + ' km/h · Böen ' + f(w1.max_gust_kmh) + ' km/h · Fenster: ' + (d1.best_window.length ? d1.best_window.join(', ') : '–') + '\n';
+    txt += '\n\n<b>Morgen (' + d1.weekday + '):</b> ' + pct(d1.paraglidable.fly) + '% Fly – ' + (d1.verdict||{}).label + '. ';
+    txt += 'Wind um ' + f((d1.wind||{}).avg_kmh) + ' km/h, Fenster ' + ((d1.best_window||[]).length ? d1.best_window.join(', ') : 'unklar') + '.';
   }
 
   if (cur.temperature_c != null) {
-    txt += '\nDWD jetzt: ' + cur.temperature_c.toFixed(0) + '°C, Wind ' + (cur.wind_kmh != null ? Math.round(cur.wind_kmh) : '–') + ' km/h (' + (cur.station||'–') + ')\n';
+    txt += '\n\n<b>Aktuell:</b> ' + cur.temperature_c.toFixed(0) + '°C an der Station ' + (cur.station||'DWD') + ', Wind ' + (cur.wind_kmh != null ? Math.round(cur.wind_kmh)+' km/h' : '–') + '.';
   }
-
   if (alerts.length) {
-    txt += '\n⚠️ DWD-Warnungen:\n';
-    alerts.slice(0,3).forEach(function(a) { txt += '  ' + (a.event||'Warnung') + ': ' + (a.headline||'') + '\n'; });
+    txt += '\n\n<span class="warn">⚠️ DWD-Warnung: ' + alerts[0].event + '</span>';
   }
 
-  txt += '\n⚠️ Kein Go/No-Go — Freigabe durch Pilot + Flugleiter';
-  return txt;
+  // Build the Steckbrief (fact card)
+  var steck = '';
+  steck += '<div class="steck-row"><span class="sk">Fly</span><span class="sv" style="color:' + flyColor(pg.fly) + '">' + flyPct + '%</span></div>';
+  steck += '<div class="steck-row"><span class="sk">Convek</span><span class="sv">' + cvkLbl(cvk.day_rating) + '</span></div>';
+  steck += '<div class="steck-row"><span class="sk">Wind Ø</span><span class="sv">' + f(w0.avg_kmh) + ' km/h ' + (w0.dir_card_14||'') + '</span></div>';
+  steck += '<div class="steck-row"><span class="sk">Böen max</span><span class="sv' + (w0.max_gust_kmh>32 ? ' warn' : '') + '">' + f(w0.max_gust_kmh) + ' km/h</span></div>';
+  steck += '<div class="steck-row"><span class="sk">Thermik</span><span class="sv">' + f(th0.blh_max_m) + ' m</span></div>';
+  steck += '<div class="steck-row"><span class="sk">Wolken</span><span class="sv">' + f(sk0.cloud_avg_pct) + '%</span></div>';
+  steck += '<div class="steck-row"><span class="sk">CAPE</span><span class="sv">' + f(th0.cape_max) + ' J/kg</span></div>';
+  steck += '<div class="steck-row"><span class="sk">Fenster</span><span class="sv good">' + (d0.best_window.length ? d0.best_window.slice(0,2).join(', ') : '–') + '</span></div>';
+  if (d0.flags.length) steck += '<div class="steck-row"><span class="sk">⚠️</span><span class="sv warn">' + flbl(d0.flags).substring(0,30) + '</span></div>';
+
+  return '<div class="briefing-grid">' +
+    '<div class="steckbrief-card"><h4>📋 Steckbrief ' + d0.weekday + '</h4>' + steck + '</div>' +
+    '<div class="steckbrief-card"><h4>💬 Briefing</h4>' + txt + '</div>' +
+    '</div>' +
+    '<div style="font-size:10px;color:var(--ink-faint);margin-top:10px;text-align:center">⚠️ Kein Go/No-Go — Freigabe durch Pilot + Flugleiter</div>';
 }
 
 /* ---------- wind rose ---------- */

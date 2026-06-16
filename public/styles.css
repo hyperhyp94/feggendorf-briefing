@@ -25,6 +25,15 @@ body{
 .briefing-box b{color:var(--contrail)}
 .briefing-box .warn{color:var(--warn)}
 .briefing-box .good{color:var(--ideal)}
+.briefing-grid{display:grid;grid-template-columns:240px 1fr;gap:14px;white-space:normal;font-family:"Space Grotesk",system-ui,sans-serif}
+@media(max-width:640px){.briefing-grid{grid-template-columns:1fr}}
+.steckbrief-card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(31,41,55,.3)}
+.steckbrief-card h4{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px;font-family:"JetBrains Mono",monospace}
+.steck-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(40,64,88,.4);font-family:"JetBrains Mono",monospace;font-size:11px}
+.steck-row .sk{color:var(--ink-faint)}
+.steck-row .sv{color:var(--ink);font-weight:600}
+.steck-row .sv.warn{color:var(--warn)}
+.steck-row .sv.good{color:var(--ideal)}
 
 /* warnings + current strip */
 .alertbar{margin:16px 0 0;display:flex;flex-direction:column;gap:8px}
