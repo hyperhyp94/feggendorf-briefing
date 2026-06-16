@@ -2,25 +2,25 @@
    Consumes /api/briefing (backend). Falls back to direct calls if no backend. */
 
 const GLOSSARY = {
-  fly:        ['fly', 'Paraglidable-KI: Wahrscheinlichkeit, dass an dem Tag überhaupt geflogen/gemeldet wird (0–100%).'],
-  xc:         ['XC', 'Wahrscheinlichkeit für einen 60+-Punkte-Streckenflug (PWC-Wertung). An Schleppgeländen meist niedrig.'],
+  fly:        ['fly', 'Paraglidable-KI: Wahrscheinlichkeit, dass an dem Tag überhaupt geflogen/gemeldet wird (0–100%). Quelle: Paraglidable API.'],
+  xc:         ['XC', 'Wahrscheinlichkeit für einen 60+-Punkte-Streckenflug (PWC-Wertung). An Schleppgeländen meist niedrig. Quelle: Paraglidable API.'],
   verdict:    ['Verdict', 'Gesamteinschätzung aus fly plus Wind/Böen/Thermik.'],
-  avgWind:    ['Ø Bodenwind', 'Mittlerer Wind in 10 m über das Fenster 9–20 h. Fürs Schleppen brauchst du stetigen Gegenwind.'],
-  maxGust:    ['Max Böe', 'Stärkste Böe im Tagesfenster — der kritische Wert beim Windenschlepp.'],
+  avgWind:    ['Ø Bodenwind', 'Mittlerer Wind in 10 m über das Fenster 9–20 h. Fürs Schleppen brauchst du stetigen Gegenwind. Quelle: DWD ICON via Open-Meteo.'],
+  maxGust:    ['Max Böe (km/h)', 'Stärkste Böe im Tagesfenster — der kritische Wert beim Windenschlepp. >32 km/h = böig, >40 km/h = kritisch. Quelle: DWD ICON via Open-Meteo.'],
   gustFactor: ['Böenfaktor', 'Böe geteilt durch Mittelwind. Über ~1,8 wird es böig und ruppig.'],
-  upper850:   ['Höhenwind 850', 'Wind auf 850 hPa (~1500 m). Zeigt Oberwind und Drift der Thermik.'],
-  shear:      ['Scherung', 'Windunterschied Boden↔850 hPa. Hoch (>20) = Scherung/Turbulenz möglich.'],
-  blh:        ['Thermikobergrenze', 'Grenzschichthöhe ≈ wie hoch die Thermik trägt.'],
-  cloudbase:  ['Wolkenbasis', 'Geschätzte Basis aus Spread Temp/Taupunkt, in m über Grund.'],
-  sun:        ['Sonnenstunden', 'Sonne im Fenster 9–20 h — Antrieb für die Thermik.'],
-  rad:        ['Einstrahlung', 'Maximale Globalstrahlung (W/m²) — Energie für Thermik.'],
-  cape:       ['CAPE', 'Labilität. Hoch (>800) = Schauer/Gewitter möglich.'],
-  cin:        ['CIN', 'Deckel, der Thermik bremst. Stark negativ = Auslöse schwer.'],
-  cloud:      ['Bewölkung', 'Mittlere Gesamtbewölkung; Klammer = tief/mittel/hoch.'],
-  precip:     ['Regen', 'Maximale Niederschlagswahrscheinlichkeit im Fenster.'],
+  upper850:   ['Höhenwind 850 hPa', 'Wind auf 850 hPa (~1500 m). Zeigt Oberwind und Drift der Thermik. Quelle: DWD ICON via Open-Meteo.'],
+  shear:      ['Scherung (km/h)', 'Windunterschied Boden↔850 hPa. Hoch (>20) = Scherung/Turbulenz möglich.'],
+  blh:        ['Thermikobergrenze (m)', 'Grenzschichthöhe ≈ wie hoch die Thermik trägt. Quelle: DWD ICON via Open-Meteo.'],
+  cloudbase:  ['Wolkenbasis (m AGL)', 'Geschätzte Basis aus Spread Temp/Taupunkt, in m über Grund. Berechnung aus ICON-Daten.'],
+  sun:        ['Sonnenstunden', 'Sonne im Fenster 9–20 h — Antrieb für die Thermik. Quelle: DWD ICON via Open-Meteo.'],
+  rad:        ['Einstrahlung (W/m²)', 'Maximale Globalstrahlung (W/m²) — Energie für Thermik. Quelle: DWD ICON via Open-Meteo.'],
+  cape:       ['CAPE (J/kg)', 'Labilität. Hoch (>800) = Schauer/Gewitter möglich. Quelle: DWD ICON via Open-Meteo.'],
+  cin:        ['CIN (J/kg)', 'Deckel, der Thermik bremst. Stark negativ = Auslöse schwer. Quelle: DWD ICON via Open-Meteo.'],
+  cloud:      ['Bewölkung (%)', 'Mittlere Gesamtbewölkung; Klammer = tief/mittel/hoch. Quelle: DWD ICON via Open-Meteo.'],
+  precip:     ['Regen (%)', 'Maximale Niederschlagswahrscheinlichkeit im Fenster. Quelle: DWD ICON via Open-Meteo.'],
   dir:        ['Windrichtung', 'Pfeile zeigen, wohin der Wind weht. Gegen die Schlepprichtung ausrichten.'],
-  confidence: ['Konfidenz', 'Stimmen ICON, ECMWF und GFS überein? Übereinstimmung = verlässlicher.'],
-  warning:    ['DWD-Warnung', 'Amtliche Unwetterwarnung des DWD (über Bright Sky).']
+  confidence: ['Konfidenz', 'Stimmen ICON, ECMWF und GFS überein? Übereinstimmung = verlässlicher. Quelle: Open-Meteo Multi-Modell.'],
+  warning:    ['DWD-Warnung', 'Amtliche Unwetterwarnung des DWD (über Bright Sky API).']
 };
 
 /* embedded Paraglidable snapshot — only used in fallback (no backend). */
@@ -118,9 +118,27 @@ const r1=x=>(x==null||isNaN(x))?null:Math.round(x*10)/10;
 function render(){
   $('site').textContent=B.site.name;
   $('coords').textContent=B.site.lat.toFixed(3)+', '+B.site.lon.toFixed(3);
-  renderAlerts(); renderNow(); renderRibbon(); renderDwdLink(); renderFooter();
+  renderSourcesBar(); renderAlerts(); renderNow(); renderRibbon(); renderDwdLink(); renderFooter();
   selected = B.days.find(d=>d.date===todayISO)?.date || B.days[0].date;
   setMode('day'); select(selected);
+}
+
+/* ---------- sources status bar (NEU) ---------- */
+function renderSourcesBar(){
+  const bar = $('sourcesbar');
+  const sources = [
+    {name: 'Paraglidable', ok: B.days && B.days.length && B.days[0].paraglidable && B.days[0].paraglidable.fly != null},
+    {name: 'Open-Meteo', ok: B.hourly && B.hourly.time && B.hourly.time.length > 0},
+    {name: 'DWD Alerts', ok: B.dwd_warnings !== undefined},
+    {name: 'DWD Current', ok: B.dwd_current && B.dwd_current.temperature_c != null},
+    {name: 'DWD Station', ok: B.dwd_station && B.dwd_station.days && B.dwd_station.days.length > 0},
+    {name: 'Convek', ok: B.convek && B.convek.day_rating != null},
+    {name: 'Multi-Modell', ok: B.days && B.days[0] && B.days[0].confidence && B.days[0].confidence.models != null}
+  ];
+  bar.innerHTML = sources.map(s => {
+    const cls = s.ok ? 'ok' : 'error';
+    return `<span class="source-chip ${cls}"><span class="dot"></span>${s.name}</span>`;
+  }).join('');
 }
 
 function renderAlerts(){
@@ -215,17 +233,17 @@ function renderConvekSection() {
   var sfcWind = cvk.surface_wind_ms ? Math.round(cvk.surface_wind_ms * 3.6) : null;
   var sfcDir = cvk.surface_wind_dir_deg ? Math.round(cvk.surface_wind_dir_deg) : null;
   var w850 = cvk.wind_850_speed_ms ? Math.round(cvk.wind_850_speed_ms * 3.6) : null;
-  cvb.innerHTML = '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;background:var(--sky-1);padding:14px 18px">' +
-    '<div style="flex:none"><span style="font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)">Convek Soaring</span>' +
-    '<div style="font-size:28px;font-weight:700;margin-top:2px">' + rlabel + '</div>' +
-    '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink-faint);margin-top:2px">Tages-Rating</div></div>' +
-    '<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-family:JetBrains Mono,monospace;font-size:12px">' +
-    '<span style="color:var(--ink-faint)">Thermik (w*)</span><span>' + wstarTxt + '</span>' +
-    '<span style="color:var(--ink-faint)">Wolkenbasis</span><span>' + cb + '</span>' +
-    '<span style="color:var(--ink-faint)">Cu-Potenzial</span><span>' + cu + '</span>' +
-    '<span style="color:var(--ink-faint)">Überentw.</span><span>' + od + '</span>' +
-    (sfcWind != null ? '<span style="color:var(--ink-faint)">Bodenwind</span><span>' + sfcWind + ' km/h ' + (sfcDir ? card16(sfcDir) : '') + '</span>' : '') +
-    (w850 != null ? '<span style="color:var(--ink-faint)">Wind 850hPa</span><span>' + w850 + ' km/h</span>' : '') +
+  cvb.innerHTML = '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">' +
+    '<div style="flex:none"><span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280">Convek Soaring</span>' +
+    '<div style="font-size:28px;font-weight:700;margin-top:2px;color:#1f2937">' + rlabel + '</div>' +
+    '<div style="font-size:10px;color:#6b7280;margin-top:2px">Tages-Rating</div></div>' +
+    '<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:13px">' +
+    '<span style="color:#6b7280">Thermik (w*)</span><span style="color:#1f2937">' + wstarTxt + '</span>' +
+    '<span style="color:#6b7280">Wolkenbasis</span><span style="color:#1f2937">' + cb + '</span>' +
+    '<span style="color:#6b7280">Cu-Potenzial</span><span style="color:#1f2937">' + cu + '</span>' +
+    '<span style="color:#6b7280">Überentw.</span><span style="color:#1f2937">' + od + '</span>' +
+    (sfcWind != null ? '<span style="color:#6b7280">Bodenwind</span><span style="color:#1f2937">' + sfcWind + ' km/h ' + (sfcDir ? card16(sfcDir) : '') + '</span>' : '') +
+    (w850 != null ? '<span style="color:#6b7280">Wind 850hPa</span><span style="color:#1f2937">' + w850 + ' km/h</span>' : '') +
     '</div></div>';
 }
 
@@ -240,11 +258,11 @@ function renderDwdStation() {
   var tmin = Math.min.apply(null,temps), tmax = Math.max.apply(null,temps), trange = tmax-tmin || 1;
   var W = temps.length * 32, H = 36;
   var pts = temps.map(function(t,i){return (i*32+8).toFixed(0)+','+(H-4-((t-tmin)/trange)*(H-12)).toFixed(0);}).join(' ');
-  var svg = '<svg width="' + W + '" height="' + H + '" style="vertical-align:middle"><polyline points="' + pts + '" fill="none" stroke="#EF8A4C" stroke-width="1.8"/></svg>';
+  var svg = '<svg width="' + W + '" height="' + H + '" style="vertical-align:middle"><polyline points="' + pts + '" fill="none" stroke="#f97316" stroke-width="1.8"/></svg>';
   var today = ds.days[0];
-  cvb.innerHTML += '<div style="margin-top:8px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink-faint)">DWD Station 10d: ' +
-    'Tmin ' + (today.temp_min_c||'–') + '° / Tmax ' + (today.temp_max_c||'–') + '°C ' + svg +
-    ' · Druck ' + (ds.hourly_pressure ? ds.hourly_pressure[14] : '–') + ' hPa</div>';
+  cvb.innerHTML += '<div style="margin-top:10px;font-size:11px;color:#6b7280">DWD Station 10d: ' +
+    'Tmin <b style="color:#1f2937">' + (today.temp_min_c||'–') + '°</b> / Tmax <b style="color:#1f2937">' + (today.temp_max_c||'–') + '°C</b> ' + svg +
+    ' · Druck <b style="color:#1f2937">' + (ds.hourly_pressure ? ds.hourly_pressure[14] : '–') + ' hPa</b></div>';
 }
 
 /* ---------- burnair ---------- */
@@ -280,35 +298,35 @@ function renderDay(d){
   const seg=hrs.filter(h=>h.h>=x0&&h.h<=x1);
   const P=k=>seg.map(h=>`${X(h.h).toFixed(1)},${Y(h[k]||0).toFixed(1)}`).join(' ');
   const area=`${X(seg[0].h)},${Y(0)} ${P('ws')} ${X(seg[seg.length-1].h)},${Y(0)}`;
-  let gridY='';for(let v=0;v<=ymax;v+=10)gridY+=`<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="#284058"/><text x="${padL-5}" y="${Y(v)+3}" fill="#5E748B" font-size="9" text-anchor="end" font-family="JetBrains Mono">${v}</text>`;
-  let xlab='';for(let h=x0;h<=x1;h+=3)xlab+=`<text x="${X(h)}" y="${H-padB+16}" fill="#5E748B" font-size="9" text-anchor="middle" font-family="JetBrains Mono">${h}</text>`;
-  let dirs='';for(let h=x0;h<=x1;h+=3){const hh=seg.find(s=>s.h===h);if(hh)dirs+=`<g transform="translate(${X(h)},${H-10}) rotate(${hh.wd})"><line x1="0" y1="5" x2="0" y2="-5" stroke="#90A6BC" stroke-width="1.4"/><path d="M0,-5 L-2.5,-1 M0,-5 L2.5,-1" stroke="#90A6BC" stroke-width="1.4" fill="none"/></g>`;}
+  let gridY='';for(let v=0;v<=ymax;v+=10)gridY+=`<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="#e8eaed"/><text x="${padL-5}" y="${Y(v)+3}" fill="#6b7280" font-size="9" text-anchor="end">${v}</text>`;
+  let xlab='';for(let h=x0;h<=x1;h+=3)xlab+=`<text x="${X(h)}" y="${H-padB+16}" fill="#6b7280" font-size="9" text-anchor="middle">${h}</text>`;
+  let dirs='';for(let h=x0;h<=x1;h+=3){const hh=seg.find(s=>s.h===h);if(hh)dirs+=`<g transform="translate(${X(h)},${H-10}) rotate(${hh.wd})"><line x1="0" y1="5" x2="0" y2="-5" stroke="#6b7280" stroke-width="1.4"/><path d="M0,-5 L-2.5,-1 M0,-5 L2.5,-1" stroke="#6b7280" stroke-width="1.4" fill="none"/></g>`;}
   const w=d.wind,th=d.thermal,sk=d.sky;
 
   wbody.innerHTML=`
     <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Wind, Böen, Höhenwind">
-      <rect x="${padL}" y="${Y(25)}" width="${W-padL-padR}" height="${Y(8)-Y(25)}" fill="#4FA47F" opacity="0.10"/>
-      <text x="${W-padR}" y="${Y(25)-3}" fill="#4FA47F" font-size="9" text-anchor="end" font-family="JetBrains Mono" opacity=".8">Bodenwind ideal 8–25</text>
+      <rect x="${padL}" y="${Y(25)}" width="${W-padL-padR}" height="${Y(8)-Y(25)}" fill="#10b981" opacity="0.08"/>
+      <text x="${W-padR}" y="${Y(25)-3}" fill="#10b981" font-size="9" text-anchor="end" opacity=".8">Bodenwind ideal 8–25</text>
       ${gridY}${xlab}
-      <polygon points="${area}" fill="#7FE0E8" opacity="0.10"/>
-      <polyline points="${P('ws850')}" fill="none" stroke="#9C7BD0" stroke-width="1.5"/>
-      <polyline points="${P('wg')}" fill="none" stroke="#EF8A4C" stroke-width="1.6" stroke-dasharray="3 3"/>
-      <polyline points="${P('ws')}" fill="none" stroke="#7FE0E8" stroke-width="2.2"/>
+      <polygon points="${area}" fill="#0ea5e9" opacity="0.08"/>
+      <polyline points="${P('ws850')}" fill="none" stroke="#8b5cf6" stroke-width="1.5"/>
+      <polyline points="${P('wg')}" fill="none" stroke="#f97316" stroke-width="1.6" stroke-dasharray="3 3"/>
+      <polyline points="${P('ws')}" fill="none" stroke="#0ea5e9" stroke-width="2.2"/>
       ${dirs}
     </svg>
     <div class="chips" style="margin-bottom:4px">
-      <span class="chip" style="border-color:#7FE0E8;color:#7FE0E8" data-tip="avgWind">Bodenwind 10m</span>
-      <span class="chip" style="border-color:#EF8A4C;color:#EF8A4C" data-tip="maxGust">Böen</span>
-      <span class="chip" style="border-color:#9C7BD0;color:#b79fe0" data-tip="upper850">Höhenwind 850</span>
+      <span class="chip" style="border-color:#0ea5e9;color:#0ea5e9" data-tip="avgWind">Bodenwind 10m</span>
+      <span class="chip" style="border-color:#f97316;color:#f97316" data-tip="maxGust">Böen</span>
+      <span class="chip" style="border-color:#8b5cf6;color:#8b5cf6" data-tip="upper850">Höhenwind 850</span>
     </div>
     <div class="stat-row">
       <div class="stat"><span class="k" data-tip="avgWind">Ø Bodenwind</span><span class="v">${fmt(w.avg_kmh)} <small>km/h</small></span></div>
-      <div class="stat"><span class="k" data-tip="maxGust">Max Böe</span><span class="v" style="color:${w.max_gust_kmh>35?'#EF8A4C':'inherit'}">${fmt(w.max_gust_kmh)} <small>km/h · ${w.max_gust_hour??'–'}h</small></span></div>
+      <div class="stat"><span class="k" data-tip="maxGust">Max Böe</span><span class="v" style="color:${w.max_gust_kmh>35?'#f97316':'inherit'}">${fmt(w.max_gust_kmh)} <small>km/h · ${w.max_gust_hour??'–'}h</small></span></div>
       <div class="stat"><span class="k" data-tip="gustFactor">Böenfaktor</span><span class="v">${fmt(w.gust_factor)}×</span></div>
       <div class="stat"><span class="k" data-tip="shear">850 · Scherung</span><span class="v">${fmt(w.upper_850_kmh)} <small>km/h · Δ${fmt(w.shear_kmh)}</small></span></div>
     </div>
     <div class="compass">${w.dir_deg_14!=null?arrow(w.dir_deg_14):''}
-      <div data-tip="dir" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#90A6BC">Windrichtung 14h: <b style="color:#EAF2FA">${w.dir_deg_14??'–'}° ${w.dir_card_14||''}</b><br><span style="color:#5E748B">gegen Schlepprichtung ausrichten</span></div>
+      <div data-tip="dir" style="font-size:13px;color:#4b5563">Windrichtung 14h: <b style="color:#1f2937">${w.dir_deg_14??'–'}° ${w.dir_card_14||''}</b><br><span style="color:#6b7280;font-size:12px">gegen Schlepprichtung ausrichten</span></div>
     </div>`;
 
   const warns=[];
@@ -346,16 +364,16 @@ function renderWeek(){
   tb.innerHTML=B.days.map(d=>{
     const c=flyColor(d.paraglidable.fly),w=d.wind||{},th=d.thermal||{},sk=d.sky||{},dt=new Date(d.date+'T12:00');
     const conf=d.confidence&&d.confidence.models_agree;
-    const confTxt=conf===true?'<span style="color:#4FA47F">einig</span>':conf===false?'<span style="color:#EF8A4C">uneinig</span>':'–';
+    const confTxt=conf===true?'<span style="color:#10b981">einig</span>':conf===false?'<span style="color:#f59e0b">uneinig</span>':'–';
     return `<tr data-date="${d.date}" class="${d.date===todayISO?'today':''}">
       <td><span class="flytag" style="background:${c}">${d.paraglidable.fly!=null?Math.round(d.paraglidable.fly*100):'–'}</span></td>
       <td>${d.paraglidable.xc!=null?Math.round(d.paraglidable.xc*100):'–'}%</td>
       <td>${d.weekday} ${dt.getDate()}.${dt.getMonth()+1}.</td>
       <td>${fmt(w.avg_kmh)}</td>
-      <td style="color:${w.max_gust_kmh>35?'#EF8A4C':'inherit'}">${fmt(w.max_gust_kmh)}</td>
+      <td style="color:${w.max_gust_kmh>35?'#f97316':'inherit'}">${fmt(w.max_gust_kmh)}</td>
       <td>${fmt(th.sun_hours)}h</td>
-      <td style="color:${sk.precip_prob_max>=40?'#EF8A4C':'inherit'}">${fmt(sk.precip_prob_max)}%</td>
-      <td style="color:${th.cape_max>=800?'#EF8A4C':'inherit'}">${fmt(th.cape_max)}</td>
+      <td style="color:${sk.precip_prob_max>=40?'#f97316':'inherit'}">${fmt(sk.precip_prob_max)}%</td>
+      <td style="color:${th.cape_max>=800?'#f97316':'inherit'}">${fmt(th.cape_max)}</td>
       <td>${w.upper_850_kmh!=null?fmt(w.upper_850_kmh)+' '+(w.upper_850_card||''):'–'}</td>
       <td>${confTxt}</td>
     </tr>`;
@@ -364,7 +382,7 @@ function renderWeek(){
 }
 
 const fmt=x=>(x==null||x==='')?'–':x;
-function arrow(d){return '<svg class="arrow" viewBox="0 0 40 40" data-tip="dir"><circle cx="20" cy="20" r="18" fill="none" stroke="#284058"/><g transform="rotate('+d+' 20 20)"><line x1="20" y1="32" x2="20" y2="8" stroke="#7FE0E8" stroke-width="2.4"/><path d="M20,8 L15,15 M20,8 L25,15" stroke="#7FE0E8" stroke-width="2.4" fill="none"/></g><text x="20" y="23" fill="#5E748B" font-size="7" text-anchor="middle" font-family="JetBrains Mono">N&#8593;</text></svg>';}
+function arrow(d){return '<svg class="arrow" viewBox="0 0 40 40" data-tip="dir"><circle cx="20" cy="20" r="18" fill="none" stroke="#d4d9e0"/><g transform="rotate('+d+' 20 20)"><line x1="20" y1="32" x2="20" y2="8" stroke="#1a56db" stroke-width="2.4"/><path d="M20,8 L15,15 M20,8 L25,15" stroke="#1a56db" stroke-width="2.4" fill="none"/></g><text x="20" y="23" fill="#6b7280" font-size="7" text-anchor="middle">N&#8593;</text></svg>';}
 
 /* ---------- text briefing toggle ---------- */
 document.getElementById('btnBriefing').onclick = function() {
@@ -493,7 +511,7 @@ function renderWindRose(d){
     sectors[dirs[idx]].wsSum+=h.ws||0;
   });
   var maxCount=Math.max(1,dirs.reduce(function(m,dd){return Math.max(m,sectors[dd].count);},0));
-  function wroseColor(ws){if(ws>=35)return'#E2655A';if(ws>=25)return'#EF8A4C';if(ws>=15)return'#E3B24A';return'#7FE0E8';}
+  function wroseColor(ws){if(ws>=35)return'#ef4444';if(ws>=25)return'#f97316';if(ws>=15)return'#fbbf24';return'#0ea5e9';}
   var R=100,cx=110,cy=110;
   var paths='';
   dirs.forEach(function(dd,i){
@@ -504,16 +522,16 @@ function renderWindRose(d){
     var a1=(i*22.5-90-11.25)*Math.PI/180,a2=((i+1)*22.5-90-11.25)*Math.PI/180;
     var x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
     var x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
-    paths+='<path d="M'+cx+','+cy+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+r.toFixed(1)+','+r.toFixed(1)+' 0 0,1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="'+wroseColor(avgWS)+'" opacity="0.82" stroke="#13212F" stroke-width="0.5"><title>'+dd+': '+s.count+'x O'+avgWS.toFixed(0)+' km/h</title></path>';
+    paths+='<path d="M'+cx+','+cy+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+r.toFixed(1)+','+r.toFixed(1)+' 0 0,1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="'+wroseColor(avgWS)+'" opacity="0.8" stroke="#e8eaed" stroke-width="0.5"><title>'+dd+': '+s.count+'x O'+avgWS.toFixed(0)+' km/h</title></path>';
   });
   var rings='';
-  for(var r=R/3;r<=R;r+=R/3)rings+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#284058" stroke-width="0.6"/>';
+  for(var r=R/3;r<=R;r+=R/3)rings+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#d4d9e0" stroke-width="0.6"/>';
   var clabels='';
   [{d:'N',a:-90},{d:'O',a:0},{d:'S',a:90},{d:'W',a:180}].forEach(function(xx){
     var a=xx.a*Math.PI/180;
-    clabels+='<text x="'+(cx+(R+14)*Math.cos(a)).toFixed(1)+'" y="'+(cy+(R+14)*Math.sin(a)+3).toFixed(1)+'" fill="#5E748B" font-size="9" text-anchor="middle" font-family="JetBrains Mono">'+xx.d+'</text>';
+    clabels+='<text x="'+(cx+(R+14)*Math.cos(a)).toFixed(1)+'" y="'+(cy+(R+14)*Math.sin(a)+3).toFixed(1)+'" fill="#6b7280" font-size="9" text-anchor="middle">'+xx.d+'</text>';
   });
-  rose.innerHTML='<h4>Windrose 9\u201320h</h4><svg class="wrose-svg" viewBox="0 0 220 220" role="img" aria-label="Windrose">'+rings+paths+clabels+'</svg><div class="wrose-legend"><span><span class="sw" style="background:#7FE0E8"></span>0\u201315</span><span><span class="sw" style="background:#E3B24A"></span>15\u201325</span><span><span class="sw" style="background:#EF8A4C"></span>25\u201335</span><span><span class="sw" style="background:#E2655A"></span>35+ km/h</span></div>';
+  rose.innerHTML='<h4>Windrose 9\u201320h</h4><svg class="wrose-svg" viewBox="0 0 220 220" role="img" aria-label="Windrose">'+rings+paths+clabels+'</svg><div class="wrose-legend"><span><span class="sw" style="background:#0ea5e9"></span>0\u201315</span><span><span class="sw" style="background:#fbbf24"></span>15\u201325</span><span><span class="sw" style="background:#f97316"></span>25\u201335</span><span><span class="sw" style="background:#ef4444"></span>35+ km/h</span></div>';
 }
 
 /* ---------- cloud layers ---------- */

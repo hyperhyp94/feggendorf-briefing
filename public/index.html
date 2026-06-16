@@ -4,18 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flugbriefing · Feggendorf</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="wrap">
+  <!-- Eyebrow -->
   <div class="eyebrow">
     <span>Flugbriefing</span><span>·</span><b id="site">Deisterflieger Feggendorf</b><span>·</span>
     <span id="coords" class="mono"></span><span>·</span><span>Windenschlepp</span>
   </div>
 
+  <!-- Header: Verdict + Fly Score -->
   <div class="head">
     <div>
       <h1 class="verdict-label" id="vlabel">—</h1>
@@ -28,32 +27,42 @@
     </div>
   </div>
 
+  <!-- Quellen-Status-Bar (NEU) -->
+  <div class="sources-bar" id="sourcesbar"></div>
+
+  <!-- Text Briefing (toggle) -->
   <div id="textbriefing" class="hidden">
     <div class="briefing-box" id="briefingtext"></div>
   </div>
 
+  <!-- DWD Alerts -->
   <div class="alertbar" id="alertbar"></div>
+
+  <!-- Current Conditions -->
   <div class="nowstrip" id="nowstrip"></div>
 
+  <!-- 10-Tage-Ribbon -->
   <div class="ribbon-label">
     <h2>10-Tage-Aussicht</h2>
     <div class="legend"><span>unten</span><span class="bar"></span><span>los</span></div>
   </div>
   <div class="ribbon" id="ribbon"></div>
 
+  <!-- Toolbar: Ansicht-Umschalter -->
   <div class="toolbar">
     <div class="seg" role="group" aria-label="Ansicht">
-      <button id="btnDay" aria-pressed="true">Tag · stündlich</button>
-      <button id="btnWeek" aria-pressed="false">Woche · täglich</button>
+      <button id="btnDay" aria-pressed="true">Stündlich</button>
+      <button id="btnWeek" aria-pressed="false">Täglich</button>
       <button id="btnWindy" aria-pressed="false">🌬️ Windy</button>
       <button id="btnBurnair" aria-pressed="false">🗺️ Thermik</button>
     </div>
     <div class="sel-note" id="selNote"></div>
   </div>
 
+  <!-- Day View: Stündliche Details -->
   <div class="panels" id="dayview">
     <div class="panel">
-      <h3>Wind, Böen & Höhenwind — gewählter Tag</h3>
+      <h3>Wind, Böen & Höhenwind</h3>
       <div class="src" id="wsrc">lädt…</div>
       <div id="wbody"><div class="loading">⋯ wird geladen</div></div>
       <div id="wrose"></div>
@@ -66,6 +75,7 @@
     </div>
   </div>
 
+  <!-- Model Comparison -->
   <div class="panels" id="modelcompare" style="margin-top:14px">
     <div class="panel" style="grid-column:1/-1">
       <h3>Modellvergleich · ICON / ECMWF / GFS</h3>
@@ -74,6 +84,7 @@
     </div>
   </div>
 
+  <!-- Windy View -->
   <div id="windyview" class="hidden">
     <div class="windy-wrap">
       <h3>Windy.com · Wind & Böen live</h3>
@@ -86,6 +97,7 @@
     </div>
   </div>
 
+  <!-- Burnair View -->
   <div id="burnairview" class="hidden">
     <div class="windy-wrap">
       <h3>burnair.cloud · Thermik & Fluggebiete</h3>
@@ -98,6 +110,7 @@
     </div>
   </div>
 
+  <!-- Week View: Tägliche Übersicht -->
   <div id="weekview" class="hidden">
     <div class="weekwrap">
       <table class="week" id="weektable">
@@ -114,16 +127,21 @@
     <div class="sel-note" style="margin-top:10px">Werte aggregiert über das Flugfenster 9–20 h · Zeile anklicken springt in die Tagesansicht.</div>
   </div>
 
+  <!-- DWD Link -->
   <div class="dwdlink" id="dwdlink"></div>
 
+  <!-- Convek Soaring -->
   <div id="convsection" style="margin-top:14px">
     <div class="convcard" id="convbody"></div>
   </div>
 
+  <!-- Footer -->
   <footer id="footer"></footer>
 </div>
 
+<!-- Tooltip -->
 <div id="tip" role="tooltip"></div>
+
 <script src="app.js"></script>
 </body>
 </html>
