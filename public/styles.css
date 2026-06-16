@@ -35,6 +35,13 @@ body{
 .steck-row .sv.warn{color:var(--warn)}
 .steck-row .sv.good{color:var(--ideal)}
 
+/* Tagesverlauf */
+.verlauf{margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(31,41,55,.3)}
+.verlauf h4{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px;font-family:"JetBrains Mono",monospace}
+.verlauf-grid{display:grid;grid-template-columns:40px 45px 45px 55px 50px;gap:4px 8px;font-family:"JetBrains Mono",monospace;font-size:11px}
+.verlauf-grid .vh{color:var(--ink-faint);font-size:9px;letter-spacing:.06em;text-transform:uppercase}
+@media(max-width:500px){.verlauf-grid{grid-template-columns:32px 38px 38px 42px 42px;font-size:10px;gap:2px 4px}}
+
 /* warnings + current strip */
 .alertbar{margin:16px 0 0;display:flex;flex-direction:column;gap:8px}
 .alert{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--bad);background:rgba(226,101,90,.08);border-radius:10px;padding:10px 13px;font-size:13px}

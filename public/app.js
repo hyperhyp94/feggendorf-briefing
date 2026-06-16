@@ -257,7 +257,15 @@ function loadBurnair() {
 function hoursFor(date){
   if(!B.hourly) return null;
   const t=B.hourly.time,out=[];
-  for(let i=0;i<t.length;i++) if(t[i].slice(0,10)===date) out.push({h:+t[i].slice(11,13),ws:B.hourly.wind_speed_10m[i],wg:B.hourly.wind_gusts_10m[i],wd:B.hourly.wind_direction_10m[i],ws850:B.hourly.wind_speed_850hPa?B.hourly.wind_speed_850hPa[i]:null});
+  const g=(k,i)=>B.hourly[k]?B.hourly[k][i]:null;
+  for(let i=0;i<t.length;i++) if(t[i].slice(0,10)===date) out.push({
+    h:+t[i].slice(11,13),
+    ws:g('wind_speed_10m',i), wg:g('wind_gusts_10m',i), wd:g('wind_direction_10m',i),
+    ws850:g('wind_speed_850hPa',i),
+    cc:g('cloud_cover',i), ccl:g('cloud_cover_low',i), ccm:g('cloud_cover_mid',i), cch:g('cloud_cover_high',i),
+    pp:g('precipitation_probability',i), cape:g('cape',i), cin:g('convective_inhibition',i),
+    blh:g('boundary_layer_height',i), t2:g('temperature_2m',i), td:g('dew_point_2m',i)
+  });
   return out.length?out:null;
 }
 
@@ -436,10 +444,36 @@ function generateBriefing() {
   steck += '<div class="steck-row"><span class="sk">Fenster</span><span class="sv good">' + (d0.best_window.length ? d0.best_window.slice(0,2).join(', ') : '–') + '</span></div>';
   if (d0.flags.length) steck += '<div class="steck-row"><span class="sk">⚠️</span><span class="sv warn">' + flbl(d0.flags).substring(0,30) + '</span></div>';
 
+  // Build hourly progression (Tagesverlauf)
+  var hours = hoursFor(d0.date);
+  var verlauf = '';
+  if (hours && hours.length) {
+    var win = hours.filter(function(h){return h.h>=8 && h.h<=20;});
+    if (win.length) {
+      verlauf += '<div class="verlauf"><h4>🕐 Tagesverlauf</h4><div class="verlauf-grid">';
+      verlauf += '<span class="vh">Uhr</span><span class="vh">Wind</span><span class="vh">Böen</span><span class="vh">Richtung</span><span class="vh">Wolken</span>';
+      // Show every 2 hours from 8-20
+      for (var h=8; h<=20; h+=2) {
+        var hr = win.find(function(x){return x.h===h;});
+        if (!hr) hr = win.reduce(function(a,b){return Math.abs(a.h-h)<Math.abs(b.h-h)?a:b;});
+        var wcol = hr.ws>25?'#EF8A4C':hr.ws>15?'#E3B24A':'#7FE0E8';
+        var gcol = hr.wg>32?'#E2655A':hr.wg>22?'#EF8A4C':'var(--ink-dim)';
+        var ws850 = hours.find(function(x){return x.h===h;});
+        verlauf += '<span class="vh">' + h + '</span>';
+        verlauf += '<span style="color:'+wcol+'">' + (hr.ws?hr.ws.toFixed(0):'–') + '</span>';
+        verlauf += '<span style="color:'+gcol+'">' + (hr.wg?hr.wg.toFixed(0):'–') + '</span>';
+        verlauf += '<span style="color:var(--ink-faint)">' + (hr.wd?card16(hr.wd):'–') + '</span>';
+        verlauf += '<span style="color:var(--ink-faint)">' + (hr.cc!=null?Math.round(hr.cc)+'%':'–') + '</span>';
+      }
+      verlauf += '</div></div>';
+    }
+  }
+
   return '<div class="briefing-grid">' +
     '<div class="steckbrief-card"><h4>📋 Steckbrief ' + d0.weekday + '</h4>' + steck + '</div>' +
     '<div class="steckbrief-card"><h4>💬 Briefing</h4>' + txt + '</div>' +
     '</div>' +
+    verlauf +
     '<div style="font-size:10px;color:var(--ink-faint);margin-top:10px;text-align:center">⚠️ Kein Go/No-Go — Freigabe durch Pilot + Flugleiter</div>';
 }
 
