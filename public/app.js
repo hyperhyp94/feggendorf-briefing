@@ -168,18 +168,22 @@ function renderFooter(){
 function setMode(m){
   mode=m;
   $('btnDay').setAttribute('aria-pressed',m==='day'); $('btnWeek').setAttribute('aria-pressed',m==='week');
-  $('btnWindy').setAttribute('aria-pressed',m==='windy');
+  $('btnWindy').setAttribute('aria-pressed',m==='windy'); $('btnBurnair').setAttribute('aria-pressed',m==='burnair');
   $('dayview').classList.toggle('hidden',m!=='day');
   $('weekview').classList.toggle('hidden',m!=='week');
   $('windyview').classList.toggle('hidden',m!=='windy');
-  $('modelcompare').classList.toggle('hidden',m==='windy');
-  $('selNote').textContent=m==='day'?'Tagesansicht — ein Tag, Stunde für Stunde.':m==='week'?'Wochenansicht — alle 10 Tage im Vergleich.':'Windy.com — interaktive Windkarte';
+  $('burnairview').classList.toggle('hidden',m!=='burnair');
+  $('modelcompare').classList.toggle('hidden',m==='windy'||m==='burnair');
+  $('convsection').classList.toggle('hidden',m==='windy'||m==='burnair');
+  $('selNote').textContent=m==='day'?'Tagesansicht':m==='week'?'Wochenansicht':m==='windy'?'Windy.com':m==='burnair'?'burnair.cloud':'';
   if(m==='week') renderWeek();
   if(m==='windy') loadWindy();
+  if(m==='burnair') loadBurnair();
 }
 $('btnDay').onclick=()=>setMode('day');
 $('btnWeek').onclick=()=>setMode('week');
 $('btnWindy').onclick=()=>setMode('windy');
+$('btnBurnair').onclick=()=>setMode('burnair');
 
 function select(date){
   selected=date;
@@ -193,6 +197,61 @@ function select(date){
   renderWindRose(d);
   renderCloudLayers(d);
   renderModelComparison(d);
+  renderConvekSection();
+  renderDwdStation();
+}
+
+function renderConvekSection() {
+  var cvk = B.convek;
+  var cvb = document.getElementById('convbody');
+  if (!cvk) { cvb.innerHTML = ''; return; }
+  var rat = cvk.day_rating || '–';
+  var rlabel = rat === 'excellent' ? '🔥 Exzellent' : rat === 'good' ? '✅ Gut' : rat === 'fair' ? '👍 Ordentlich' : rat === 'marginal' ? '⚠️ Grenzwertig' : rat === 'poor' ? '❌ Schwach' : rat;
+  var wstar = cvk.wstar_ms;
+  var wstarTxt = wstar != null ? (wstar < 0.5 ? 'Keine' : wstar < 1.5 ? 'Schwach (' + wstar.toFixed(1) + ' m/s)' : wstar < 2.5 ? 'Mittel (' + wstar.toFixed(1) + ' m/s)' : 'Stark (' + wstar.toFixed(1) + ' m/s)') : '–';
+  var cb = cvk.cloudbase_agl_ft ? Math.round(cvk.cloudbase_agl_ft * 0.3048) + ' m AGL' : '–';
+  var cu = cvk.cu_potential ? '✅ Ja' : '—';
+  var od = cvk.od_potential ? '⚠️ Ja' : '—';
+  var sfcWind = cvk.surface_wind_ms ? Math.round(cvk.surface_wind_ms * 3.6) : null;
+  var sfcDir = cvk.surface_wind_dir_deg ? Math.round(cvk.surface_wind_dir_deg) : null;
+  var w850 = cvk.wind_850_speed_ms ? Math.round(cvk.wind_850_speed_ms * 3.6) : null;
+  cvb.innerHTML = '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;background:var(--sky-1);padding:14px 18px">' +
+    '<div style="flex:none"><span style="font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)">Convek Soaring</span>' +
+    '<div style="font-size:28px;font-weight:700;margin-top:2px">' + rlabel + '</div>' +
+    '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink-faint);margin-top:2px">Tages-Rating</div></div>' +
+    '<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-family:JetBrains Mono,monospace;font-size:12px">' +
+    '<span style="color:var(--ink-faint)">Thermik (w*)</span><span>' + wstarTxt + '</span>' +
+    '<span style="color:var(--ink-faint)">Wolkenbasis</span><span>' + cb + '</span>' +
+    '<span style="color:var(--ink-faint)">Cu-Potenzial</span><span>' + cu + '</span>' +
+    '<span style="color:var(--ink-faint)">Überentw.</span><span>' + od + '</span>' +
+    (sfcWind != null ? '<span style="color:var(--ink-faint)">Bodenwind</span><span>' + sfcWind + ' km/h ' + (sfcDir ? card16(sfcDir) : '') + '</span>' : '') +
+    (w850 != null ? '<span style="color:var(--ink-faint)">Wind 850hPa</span><span>' + w850 + ' km/h</span>' : '') +
+    '</div></div>';
+}
+
+function renderDwdStation() {
+  var ds = B.dwd_station;
+  if (!ds || !ds.days || !ds.days.length) return;
+  // Add 10-day temp trend as a small line to the Convek card
+  var cvb = document.getElementById('convbody');
+  if (!cvb.innerHTML) return;
+  var temps = ds.days.map(function(d){return d.temp_max_c;}).filter(function(x){return x!=null;});
+  if (temps.length < 3) return;
+  var tmin = Math.min.apply(null,temps), tmax = Math.max.apply(null,temps), trange = tmax-tmin || 1;
+  var W = temps.length * 32, H = 36;
+  var pts = temps.map(function(t,i){return (i*32+8).toFixed(0)+','+(H-4-((t-tmin)/trange)*(H-12)).toFixed(0);}).join(' ');
+  var svg = '<svg width="' + W + '" height="' + H + '" style="vertical-align:middle"><polyline points="' + pts + '" fill="none" stroke="#EF8A4C" stroke-width="1.8"/></svg>';
+  var today = ds.days[0];
+  cvb.innerHTML += '<div style="margin-top:8px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink-faint)">DWD Station 10d: ' +
+    'Tmin ' + (today.temp_min_c||'–') + '° / Tmax ' + (today.temp_max_c||'–') + '°C ' + svg +
+    ' · Druck ' + (ds.hourly_pressure ? ds.hourly_pressure[14] : '–') + ' hPa</div>';
+}
+
+/* ---------- burnair ---------- */
+function loadBurnair() {
+  var f = document.getElementById('burnairframe');
+  if (f.src.indexOf('burnair.cloud') >= 0) return;
+  f.src = 'https://www.burnair.cloud/?lat=52.294&lon=9.377&zoom=10';
 }
 
 function hoursFor(date){

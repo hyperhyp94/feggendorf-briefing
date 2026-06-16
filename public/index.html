@@ -41,6 +41,7 @@
       <button id="btnDay" aria-pressed="true">Tag · stündlich</button>
       <button id="btnWeek" aria-pressed="false">Woche · täglich</button>
       <button id="btnWindy" aria-pressed="false">🌬️ Windy</button>
+      <button id="btnBurnair" aria-pressed="false">🗺️ Thermik</button>
     </div>
     <div class="sel-note" id="selNote"></div>
   </div>
@@ -80,6 +81,18 @@
     </div>
   </div>
 
+  <div id="burnairview" class="hidden">
+    <div class="windy-wrap">
+      <h3>burnair.cloud · Thermik & Fluggebiete</h3>
+      <div class="src">Thermik-Hotspots, Lee-Gebiete, Starts/Landungen</div>
+      <iframe id="burnairframe" style="width:100%;height:520px;border:0;border-radius:12px"
+        src="about:blank"
+        loading="lazy"
+        title="burnair Thermik-Karte"></iframe>
+      <div class="sel-note" style="margin-top:8px">burnair.cloud — Paragliding-Karte mit Thermik, Hangaufwind, Fluggebieten.</div>
+    </div>
+  </div>
+
   <div id="weekview" class="hidden">
     <div class="weekwrap">
       <table class="week" id="weektable">
@@ -97,6 +110,10 @@
   </div>
 
   <div class="dwdlink" id="dwdlink"></div>
+
+  <div id="convsection" style="margin-top:14px">
+    <div class="convcard" id="convbody"></div>
+  </div>
 
   <footer id="footer"></footer>
 </div>
