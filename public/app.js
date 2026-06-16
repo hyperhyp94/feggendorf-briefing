@@ -358,6 +358,61 @@ function renderWeek(){
 const fmt=x=>(x==null||x==='')?'–':x;
 function arrow(d){return '<svg class="arrow" viewBox="0 0 40 40" data-tip="dir"><circle cx="20" cy="20" r="18" fill="none" stroke="#284058"/><g transform="rotate('+d+' 20 20)"><line x1="20" y1="32" x2="20" y2="8" stroke="#7FE0E8" stroke-width="2.4"/><path d="M20,8 L15,15 M20,8 L25,15" stroke="#7FE0E8" stroke-width="2.4" fill="none"/></g><text x="20" y="23" fill="#5E748B" font-size="7" text-anchor="middle" font-family="JetBrains Mono">N&#8593;</text></svg>';}
 
+/* ---------- text briefing toggle ---------- */
+document.getElementById('btnBriefing').onclick = function() {
+  var tb = document.getElementById('textbriefing');
+  var bt = document.getElementById('briefingtext');
+  if (tb.classList.contains('hidden')) {
+    bt.innerHTML = generateBriefing();
+    tb.classList.remove('hidden');
+    this.textContent = '📋 Schließen';
+  } else {
+    tb.classList.add('hidden');
+    this.textContent = '📋 Briefing';
+  }
+};
+
+function generateBriefing() {
+  if (!B || !B.days || !B.days.length) return 'Keine Daten geladen.';
+  var d0 = B.days[0], d1 = B.days[1];
+  function f(x) { return (x == null || x === '') ? '–' : x; }
+  function pct(x) { return x != null ? Math.round(x * 100) : '–'; }
+  function flbl(x) { var m = {gusts:'böig',gusts_high:'Starkböen',shear:'Scherung',rain:'Regen',cb:'CB-Gefahr',showers:'Schauer',unstable:'labil'}; return x.map(function(f){return m[f]||f;}).join(', '); }
+  function cvkLbl(r) { var m = {poor:'Schwach',marginal:'Grenzwertig',fair:'Ordentlich',good:'Gut',excellent:'Exzellent'}; return m[r] || r || '–'; }
+  var w0 = d0.wind || {}, th0 = d0.thermal || {}, sk0 = d0.sky || {}, conf0 = d0.confidence || {};
+  var cvk = B.convek || {};
+  var cur = B.dwd_current || {};
+  var alerts = B.dwd_warnings || [];
+
+  var txt = '🪂 Feggendorf — ' + d0.weekday + ', ' + d0.date + '\n\n';
+  txt += 'Heute: fly ' + pct(d0.paraglidable.fly) + '% — ' + d0.verdict.label + ' | Convek: ' + cvkLbl(cvk.day_rating) + '\n';
+  txt += 'Wind Ø ' + f(w0.avg_kmh) + ' km/h ' + (w0.dir_card_14||'') + ' · Böen ' + f(w0.max_gust_kmh) + ' km/h (' + f(w0.max_gust_hour) + 'h) · Faktor ' + f(w0.gust_factor) + '×\n';
+  txt += 'Höhenwind 850: ' + f(w0.upper_850_kmh) + ' km/h ' + (w0.upper_850_card||'') + ' · Scherung Δ' + f(w0.shear_kmh) + ' km/h\n';
+  txt += 'Thermik: BLH ' + f(th0.blh_max_m) + ' m · Wolkenbasis ' + f(th0.cloud_base_m) + ' m · CAPE ' + f(th0.cape_max) + ' J/kg\n';
+  txt += 'Bewölkung: ' + f(sk0.cloud_avg_pct) + '% · Regen ' + f(sk0.precip_prob_max) + '%\n';
+  txt += 'Fenster: ' + (d0.best_window.length ? d0.best_window.join(', ') : 'kein klares Fenster') + '\n';
+  if (d0.flags.length) txt += 'Flags: ' + flbl(d0.flags) + '\n';
+  txt += 'Konfidenz: ' + (conf0.models_agree === true ? 'Modelle einig' : conf0.models_agree === false ? 'Modelle uneinig' : '–') + '\n';
+
+  if (d1) {
+    var w1 = d1.wind || {};
+    txt += '\nMorgen (' + d1.weekday + ' ' + d1.date + '): fly ' + pct(d1.paraglidable.fly) + '% — ' + d1.verdict.label + '\n';
+    txt += 'Wind Ø ' + f(w1.avg_kmh) + ' km/h · Böen ' + f(w1.max_gust_kmh) + ' km/h · Fenster: ' + (d1.best_window.length ? d1.best_window.join(', ') : '–') + '\n';
+  }
+
+  if (cur.temperature_c != null) {
+    txt += '\nDWD jetzt: ' + cur.temperature_c.toFixed(0) + '°C, Wind ' + (cur.wind_kmh != null ? Math.round(cur.wind_kmh) : '–') + ' km/h (' + (cur.station||'–') + ')\n';
+  }
+
+  if (alerts.length) {
+    txt += '\n⚠️ DWD-Warnungen:\n';
+    alerts.slice(0,3).forEach(function(a) { txt += '  ' + (a.event||'Warnung') + ': ' + (a.headline||'') + '\n'; });
+  }
+
+  txt += '\n⚠️ Kein Go/No-Go — Freigabe durch Pilot + Flugleiter';
+  return txt;
+}
+
 /* ---------- wind rose ---------- */
 function renderWindRose(d){
   var rose=document.getElementById('wrose');
