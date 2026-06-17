@@ -119,6 +119,7 @@ function render(){
   $('site').textContent=B.site.name;
   $('coords').textContent=B.site.lat.toFixed(3)+', '+B.site.lon.toFixed(3);
   renderSourcesBar(); renderAlerts(); renderNow(); renderRibbon(); renderDwdLink(); renderFooter();
+  if (!B.days || !B.days.length) { $('ribbon').innerHTML = '<div class=\"alert\">Keine Tagesdaten verfügbar — Open-Meteo ist evtl. im Rate-Limit.</div>'; return; }
   selected = B.days.find(d=>d.date===todayISO)?.date || B.days[0].date;
   setMode('day'); select(selected);
 }
