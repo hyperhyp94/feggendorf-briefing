@@ -18,7 +18,7 @@ const GLOSSARY = {
   cin:        ['CIN (J/kg)', 'Deckel, der Thermik bremst. Stark negativ = Auslöse schwer. Quelle: DWD ICON via Open-Meteo.'],
   cloud:      ['Bewölkung (%)', 'Mittlere Gesamtbewölkung; Klammer = tief/mittel/hoch. Quelle: DWD ICON via Open-Meteo.'],
   precip:     ['Regen (%)', 'Maximale Niederschlagswahrscheinlichkeit im Fenster. Quelle: DWD ICON via Open-Meteo.'],
-  dir:        ['Windrichtung', 'Pfeile zeigen, wohin der Wind weht. Gegen die Schlepprichtung ausrichten.'],
+  dir:        ['Windrichtung', 'Pfeile zeigen die Schlepprichtung, also wohin der Wind weht. Schirm in Pfeilrichtung ausrichten.'],
   confidence: ['Konfidenz', 'Stimmen ICON, ECMWF und GFS überein? Übereinstimmung = verlässlicher. Quelle: Open-Meteo Multi-Modell.'],
   warning:    ['DWD-Warnung', 'Amtliche Unwetterwarnung des DWD (über Bright Sky API).']
 };
@@ -301,7 +301,7 @@ function renderDay(d){
   const area=`${X(seg[0].h)},${Y(0)} ${P('ws')} ${X(seg[seg.length-1].h)},${Y(0)}`;
   let gridY='';for(let v=0;v<=ymax;v+=10)gridY+=`<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="#e8eaed"/><text x="${padL-5}" y="${Y(v)+3}" fill="#6b7280" font-size="9" text-anchor="end">${v}</text>`;
   let xlab='';for(let h=x0;h<=x1;h+=3)xlab+=`<text x="${X(h)}" y="${H-padB+16}" fill="#6b7280" font-size="9" text-anchor="middle">${h}</text>`;
-  let dirs='';for(let h=x0;h<=x1;h+=3){const hh=seg.find(s=>s.h===h);if(hh)dirs+=`<g transform="translate(${X(h)},${H-10}) rotate(${hh.wd})"><line x1="0" y1="5" x2="0" y2="-5" stroke="#6b7280" stroke-width="1.4"/><path d="M0,-5 L-2.5,-1 M0,-5 L2.5,-1" stroke="#6b7280" stroke-width="1.4" fill="none"/></g>`;}
+  let dirs='';for(let h=x0;h<=x1;h+=3){const hh=seg.find(s=>s.h===h);if(hh)dirs+=`<g transform="translate(${X(h)},${H-10}) rotate(${hh.wd+180})"><line x1="0" y1="5" x2="0" y2="-5" stroke="#6b7280" stroke-width="1.4"/><path d="M0,-5 L-2.5,-1 M0,-5 L2.5,-1" stroke="#6b7280" stroke-width="1.4" fill="none"/></g>`;}
   const w=d.wind,th=d.thermal,sk=d.sky;
 
   wbody.innerHTML=`
@@ -383,7 +383,7 @@ function renderWeek(){
 }
 
 const fmt=x=>(x==null||x==='')?'–':x;
-function arrow(d){return '<svg class="arrow" viewBox="0 0 40 40" data-tip="dir"><circle cx="20" cy="20" r="18" fill="none" stroke="#d4d9e0"/><g transform="rotate('+d+' 20 20)"><line x1="20" y1="32" x2="20" y2="8" stroke="#1a56db" stroke-width="2.4"/><path d="M20,8 L15,15 M20,8 L25,15" stroke="#1a56db" stroke-width="2.4" fill="none"/></g><text x="20" y="23" fill="#6b7280" font-size="7" text-anchor="middle">N&#8593;</text></svg>';}
+function arrow(d){return '<svg class="arrow" viewBox="0 0 40 40" data-tip="dir"><circle cx="20" cy="20" r="18" fill="none" stroke="#d4d9e0"/><g transform="rotate('+(d+180)+' 20 20)"><line x1="20" y1="32" x2="20" y2="8" stroke="#1a56db" stroke-width="2.4"/><path d="M20,8 L15,15 M20,8 L25,15" stroke="#1a56db" stroke-width="2.4" fill="none"/></g><text x="20" y="23" fill="#6b7280" font-size="7" text-anchor="middle">N&#8593;</text></svg>';}
 
 /* ---------- text briefing toggle ---------- */
 document.getElementById('btnBriefing').onclick = function() {
