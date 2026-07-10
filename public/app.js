@@ -559,69 +559,93 @@ function renderCloudLayers(d){
   cl.innerHTML='<h4>Bew\u00f6lkung 14h</h4><div class="cloudbars"><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-lh)+'px"></div><div class="cloudbar low" style="height:'+lh+'px" data-tip="cloud"></div><div class="cloudbar-label">Tief</div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-mh)+'px"></div><div class="cloudbar mid" style="height:'+mh+'px" data-tip="cloud"></div><div class="cloudbar-label">Mittel</div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-hh)+'px"></div><div class="cloudbar high" style="height:'+hh+'px" data-tip="cloud"></div><div class="cloudbar-label">Hoch</div></div></div><div class="cloud-total">'+tot+'<span>% Gesamt</span></div>';
 }
 
-/* ---------- model comparison (4-Tage-Tabelle) ---------- */
+/* ---------- model comparison (4-Tageszeiten-Tabelle für gewählten Tag) ---------- */
 function renderModelComparison(d){
   var mb=document.getElementById('mbody');
-  var entries=[
+  var hm=(d.confidence||{}).hourly_models;
+  if(!hm||!hm.length){
+    mb.innerHTML='<div class="loading">Keine stündlichen Multi-Modell-Daten verfügbar</div>';return;
+  }
+
+  var modelDefs=[
     {label:'ICON', key:'icon', color:'#7FE0E8'},
     {label:'ECMWF',key:'ecmwf',color:'#9C7BD0'},
     {label:'GFS',  key:'gfs',  color:'#E3B24A'}
   ];
-  // Show next 4 days (or however many are available)
-  var days4=B.days.slice(0,4);
-  if(!days4.length||!days4[0].confidence||!days4[0].confidence.models){
-    mb.innerHTML='<div class="loading">Keine Multi-Modell-Daten verfügbar</div>';return;
-  }
 
   function angDiff(a,b){if(a==null||b==null)return 0;var diff=Math.abs(a-b);return diff>180?360-diff:diff;}
 
-  var html='<div class="mc-grid">';
-  days4.forEach(function(day){
-    var conf=day.confidence||{},models=conf.models||{};
-    var dt=new Date(day.date+'T12:00');
-    var isSel=day.date===d.date;
-    var iconDir=(models.icon||{}).wind_dir;
+  // Windpfeil: zeigt Schlepprichtung (wohin der Wind weht = Schlepprichtung)
+  function windArrow(deg){
+    if(deg==null)return'';
+    var arrows=['↑','↗','→','↘','↓','↙','←','↖'];
+    return arrows[Math.round(deg/45)%8];
+  }
 
-    // Collect gust array for best/worst marking
-    var gArr=entries.map(function(e){return(models[e.key]||{}).gust;}).filter(function(x){return x!=null;});
-    function bw(val,arr){if(val==null||!arr.length)return'';var mn=Math.min.apply(Math,arr),mx=Math.max.apply(Math,arr);return val===mn?'best':val===mx?'worst':'';}
+  // Tabelle: Zeilen = Uhrzeiten, Spalten = Modelle
+  var html='<div class="mc-hourly-wrap"><table class="model-table mc-hourly-tbl"><thead><tr>'
+    +'<th class="mc-th-time">Uhr</th>';
+  modelDefs.forEach(function(m){
+    html+='<th style="color:'+m.color+'">'+m.label+'</th>';
+  });
+  html+='</tr></thead><tbody>';
 
-    var rows='';
-    entries.forEach(function(e){
-      var m=models[e.key];if(!m)return;
-      var dirTxt=m.wind_dir!=null?card16(m.wind_dir):'–';
+  hm.forEach(function(entry){
+    var hour=entry.hour;
+    var models=entry.models||{};
+    var iconWs=(models.icon||{}).ws;
+    var iconWd=(models.icon||{}).wd;
+
+    html+='<tr><td class="mc-hour-cell">'+String(hour).padStart(2,'0')+':00</td>';
+
+    modelDefs.forEach(function(mdef){
+      var m=models[mdef.key]||{};
+      var ws=m.ws,wd=m.wd,wg=m.wg,temp=m.temp;
+
+      var cellStyle='';
+      // Wind-Geschwindigkeit: Abweichung von ICON markieren
+      if(mdef.key!=='icon'&&ws!=null&&iconWs!=null){
+        var wsDiff=Math.abs(ws-iconWs);
+        if(wsDiff>20)cellStyle='background:rgba(249,115,22,.18)';
+        else if(wsDiff>10)cellStyle='background:rgba(251,191,36,.18)';
+      }
+
+      var dirTxt=wd!=null?(card16(wd)+' '+windArrow(wd)):'–';
       var dirStyle='';
-      if(e.key!=='icon'&&angDiff(m.wind_dir,iconDir)>45){
-        dirStyle='color:#f59e0b;font-weight:600';dirTxt+=' ⚠';
+      // Windrichtung: Abweichung von ICON >45° markieren
+      if(mdef.key!=='icon'&&angDiff(wd,iconWd)>45){
+        dirStyle='color:#f59e0b;font-weight:600';
+        dirTxt+=' ⚠';
       }
-      var cwDir='';
-      if(m.wind_dir!=null){
-        var alpha=(m.wind_dir-90)*Math.PI/180;
-        var cw=Math.round(Math.abs((m.wind_speed||0)*Math.sin(alpha)));
-        cwDir=' <span style="color:'+(cw>25?'#ef4444':cw>15?'#f59e0b':'var(--ink-faint)')+';font-size:10px">⊥'+cw+'</span>';
+
+      var inner='';
+      if(ws!=null||wg!=null){
+        inner+='<span class="mc-ws">'+(ws!=null?ws+' km/h':'–')+'</span>'
+          +' <span class="mc-dir" style="'+dirStyle+'">'+dirTxt+'</span>';
+        if(wg!=null)inner+='<br><span class="mc-wg">&#8593;'+wg+' km/h</span>';
+        if(temp!=null)inner+=' <span class="mc-temp">'+temp+'°</span>';
+      }else{
+        inner='–';
       }
-      rows+='<tr>'
-        +'<td style="color:'+e.color+';font-weight:600">'+e.label+'</td>'
-        +'<td>'+fmt(m.wind_speed)+' km/h'+cwDir+'</td>'
-        +'<td style="'+dirStyle+'" data-tip="dir">'+dirTxt+'</td>'
-        +'<td class="'+bw(m.gust,gArr)+'">'+fmt(m.gust)+'</td>'
-        +'<td>'+fmt(m.rain)+' mm</td>'
-        +'</tr>';
+
+      html+='<td class="mc-model-cell" style="'+cellStyle+'">'+inner+'</td>';
     });
 
-    var agreeEl=conf.models_agree===true?'<span style="color:#10b981;font-size:10px">✓ einig</span>'
-      :conf.models_agree===false?'<span style="color:#f59e0b;font-size:10px">⚠ uneinig</span>':'';
-
-    html+='<div class="mc-day'+(isSel?' mc-day-sel':'')+'"><div class="mc-day-hdr">'
-      +day.weekday+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'. '+agreeEl+'</div>'
-      +'<table class="model-table mc-tbl"><thead><tr><th>Modell</th><th data-tip="avgWind">Wind</th>'
-      +'<th data-tip="dir">Richtg.</th><th data-tip="maxGust">Böen</th><th data-tip="precip">Regen</th></tr></thead>'
-      +'<tbody>'+rows+'</tbody></table>'
-      +'<div style="font-size:9px;color:var(--ink-faint);margin-top:3px">Streuung Böen: '+(conf.gust_spread_kmh||'–')+' km/h</div>'
-      +'</div>';
+    html+='</tr>';
   });
-  html+='</div>';
-  html+='<div style="font-size:9px;color:var(--ink-faint);margin-top:8px">⊥ = Querwind-Anteil zur Schleppachse O/W · ⚠ = Windrichtung >45° abweichend von ICON · grün=bestes/rot=höchstes Modell</div>';
+
+  html+='</tbody></table></div>';
+
+  // Tages-Einigkeit (aus daily confidence) anzeigen
+  var conf=d.confidence||{};
+  var agreeEl=conf.models_agree===true
+    ?'<span style="color:#10b981">✓ Modelle einig</span> · Streuung Böen: '+(conf.gust_spread_kmh||'–')+' km/h'
+    :conf.models_agree===false
+    ?'<span style="color:#f59e0b">⚠ Modelle uneinig</span> · Streuung Böen: '+(conf.gust_spread_kmh||'–')+' km/h'
+    :'';
+  if(agreeEl)html+='<div style="font-size:10px;color:var(--ink-faint);margin-top:6px">'+agreeEl+'</div>';
+
+  html+='<div style="font-size:9px;color:var(--ink-faint);margin-top:5px">↑ = Böen · ⚠ = Windrichtung >45° od. Wind >10 km/h (gelb) / >20 km/h (orange) abweichend von ICON</div>';
   mb.innerHTML=html;
 }
 
