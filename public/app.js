@@ -327,7 +327,7 @@ function renderDay(d){
       <div class="stat"><span class="k" data-tip="shear">850 · Scherung</span><span class="v">${fmt(w.upper_850_kmh)} <small>km/h · Δ${fmt(w.shear_kmh)}</small></span></div>
     </div>
     <div class="compass">${w.dir_deg_14!=null?arrow(w.dir_deg_14):''}
-      <div data-tip="dir" style="font-size:13px;color:#4b5563">Windrichtung 14h: <b style="color:#1f2937">${w.dir_deg_14??'–'}° ${w.dir_card_14||''}</b><br><span style="color:#6b7280;font-size:12px">gegen Schlepprichtung ausrichten</span></div>
+      <div data-tip="dir" style="font-size:13px;color:#4b5563">Windrichtung 14h: <b style="color:#1f2937">${w.dir_deg_14??'–'}° ${w.dir_card_14||''}</b><br><span style="color:#6b7280;font-size:12px">in Schlepprichtung ausrichten</span></div>
     </div>`;
 
   const warns=[];
