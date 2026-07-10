@@ -20,7 +20,9 @@ const GLOSSARY = {
   precip:     ['Regen (%)', 'Maximale Niederschlagswahrscheinlichkeit im Fenster. Quelle: DWD ICON via Open-Meteo.'],
   dir:        ['Windrichtung', 'Pfeile zeigen die Schlepprichtung, also wohin der Wind weht. Schirm in Pfeilrichtung ausrichten.'],
   confidence: ['Konfidenz', 'Stimmen ICON, ECMWF und GFS überein? Übereinstimmung = verlässlicher. Quelle: Open-Meteo Multi-Modell.'],
-  warning:    ['DWD-Warnung', 'Amtliche Unwetterwarnung des DWD (über Bright Sky API).']
+  warning:    ['DWD-Warnung', 'Amtliche Unwetterwarnung des DWD (über Bright Sky API).'],
+  crosswind:  ['Querwind (Crosswind)', 'Windkomponente quer zur Schlepprichtung O/W (90°/270°). ≤15 km/h = ok für Start · >15 km/h = aufpassen · >25 km/h = kritisch. Berechnung: ws·|sin(wd−90°)|.'],
+  headwind:   ['Längswind', 'Windkomponente entlang der Schlepprichtung. Positiv (Gegenwind) = ideal für Schlepp in der angezeigten Richtung. Negativ = Rückenwind. Berechnung: ws·cos(wd−90°).']
 };
 
 /* embedded Paraglidable snapshot — only used in fallback (no backend). */
@@ -107,7 +109,7 @@ function clientAggregate(hourly, pg){
       wind:{avg_kmh:r1(avgW),max_gust_kmh:r1(maxG),max_gust_hour:maxGh,gust_factor:r1(maxG/Math.max(1,avgW)),dir_deg_14:mid?Math.round(mid.wd):null,dir_card_14:mid?card16(mid.wd):null,upper_850_kmh:mid?r1(mid.ws850):null,upper_850_card:mid?card16(mid.wd850):null,shear_kmh:shear!=null?r1(shear):null},
       thermal:{blh_max_m:Math.round(mx('blh')),cloud_base_m:base,sun_hours:r1(sun),rad_max_wm2:Math.round(mx('rad')),cape_max:Math.round(mx('cape')),cin_14:mid&&mid.cin!=null?Math.round(mid.cin):null},
       sky:{cloud_avg_pct:Math.round(win.reduce((a,x)=>a+(x.cc||0),0)/win.length),cloud_low:mid?mid.ccl:null,cloud_mid:mid?mid.ccm:null,cloud_high:mid?mid.cch:null,precip_prob_max:mx('pp')},
-      best_window:compress(win.filter(x=>x.wg<=30&&x.ws>=6&&x.ws<=28&&(x.pp||0)<30).map(x=>x.h)),
+      best_window:compress(win.filter(x=>{if(x.wg>30||x.ws<6||x.ws>28||(x.pp||0)>=30)return false;if(x.wd==null)return true;const a=(x.wd-90)*Math.PI/180;return Math.abs((x.ws||0)*Math.sin(a))<=15&&(x.ws||0)*Math.cos(a)>=-15;}).map(x=>x.h)),
       flags,confidence:{models_agree:null,note:'—'}};
   });
 }
@@ -328,7 +330,14 @@ function renderDay(d){
     </div>
     <div class="compass">${w.dir_deg_14!=null?arrow(w.dir_deg_14):''}
       <div data-tip="dir" style="font-size:13px;color:#4b5563">Windrichtung 14h: <b style="color:#1f2937">${w.dir_deg_14??'–'}° ${w.dir_card_14||''}</b><br><span style="color:#6b7280;font-size:12px">in Schlepprichtung ausrichten</span></div>
-    </div>`;
+    </div>
+    ${w.crosswind_kmh!=null?`<div class="schlepp-row" data-tip="crosswind">
+      <span class="schlepp-label">Schlepp (O/W):</span>
+      <span class="schlepp-val">${fmt(Math.abs(w.headwind_kmh))} km/h Längs</span>
+      <span class="schlepp-sep">·</span>
+      <span class="schlepp-val schlepp-cw" style="color:${w.crosswind_kmh>25?'#ef4444':w.crosswind_kmh>15?'#f59e0b':'#10b981'}" data-tip="crosswind">${fmt(w.crosswind_kmh)} km/h Quer</span>
+      <span class="schlepp-dir">(${w.ideal_dir||'–'})</span>
+    </div>`:''}`;
 
   const warns=[];
   if(d.flags.includes('gusts_high'))warns.push(['bad',`Böen bis ${fmt(w.max_gust_kmh)} km/h — kritisch für den Schlepp.`]);
@@ -337,6 +346,8 @@ function renderDay(d){
   if(d.flags.includes('rain'))warns.push(['bad',`Niederschlag wahrscheinlich (bis ${sk.precip_prob_max}%).`]);
   if(d.flags.includes('cb'))warns.push(['bad',`CB-/Gewitterpotenzial — CAPE bis ${th.cape_max} J/kg.`]);
   else if(d.flags.includes('unstable'))warns.push(['',`Labile Schichtung (CAPE ${th.cape_max}) — Überentwicklung beobachten.`]);
+  if(d.flags.includes('crosswind_high'))warns.push(['bad',`Starker Querwind (${fmt(w.crosswind_kmh)} km/h) — Schlepp kritisch.`]);
+  else if(d.flags.includes('crosswind'))warns.push(['',`Querwind (${fmt(w.crosswind_kmh)} km/h) — Startfenster mit weniger Quer-Anteil wählen.`]);
   if(d.confidence&&d.confidence.models_agree===false)warns.push(['',`Modelle uneinig (Böen-Streuung ${d.confidence.gust_spread_kmh??'?'} km/h) — niedrigere Verlässlichkeit.`]);
   const ww=document.createElement('div');ww.className='warns';
   ww.innerHTML=warns.map(x=>`<div class="warn-item ${x[0]}"><span class="dot"></span><span>${x[1]}</span></div>`).join('');
@@ -405,7 +416,7 @@ function generateBriefing() {
   function f(x) { return (x == null || x === '') ? '–' : x; }
   function pct(x) { return x != null ? Math.round(x * 100) : '–'; }
   function cvkLbl(r) { var m = {poor:'Schwach',marginal:'Grenzwertig',fair:'Ordentlich',good:'Gut',excellent:'Exzellent'}; return m[r] || '–'; }
-  function flbl(x) { var m = {gusts:'Böig',gusts_high:'Starkböen',shear:'Scherung',rain:'Regen',cb:'CB-Gefahr',showers:'Schauer',unstable:'Labil'}; return x.map(function(f){return m[f]||f;}).join(', '); }
+  function flbl(x) { var m = {gusts:'Böig',gusts_high:'Starkböen',shear:'Scherung',rain:'Regen',cb:'CB-Gefahr',showers:'Schauer',unstable:'Labil',crosswind:'Querwind',crosswind_high:'Starker Querwind'}; return x.map(function(f){return m[f]||f;}).join(', '); }
   var w0 = d0.wind || {}, th0 = d0.thermal || {}, sk0 = d0.sky || {}, conf0 = d0.confidence || {};
   var cvk = B.convek || {}, cur = B.dwd_current || {}, alerts = B.dwd_warnings || [];
   var pg = d0.paraglidable || {};
@@ -548,38 +559,70 @@ function renderCloudLayers(d){
   cl.innerHTML='<h4>Bew\u00f6lkung 14h</h4><div class="cloudbars"><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-lh)+'px"></div><div class="cloudbar low" style="height:'+lh+'px" data-tip="cloud"></div><div class="cloudbar-label">Tief</div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-mh)+'px"></div><div class="cloudbar mid" style="height:'+mh+'px" data-tip="cloud"></div><div class="cloudbar-label">Mittel</div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center"><div style="height:'+(maxH-hh)+'px"></div><div class="cloudbar high" style="height:'+hh+'px" data-tip="cloud"></div><div class="cloudbar-label">Hoch</div></div></div><div class="cloud-total">'+tot+'<span>% Gesamt</span></div>';
 }
 
-/* ---------- model comparison ---------- */
+/* ---------- model comparison (4-Tage-Tabelle) ---------- */
 function renderModelComparison(d){
   var mb=document.getElementById('mbody');
-  var conf=d.confidence||{};
-  var models=conf.models;
-  if(!models){mb.innerHTML='<div class="loading">Keine Multi-Modell-Daten</div>';return;}
   var entries=[
     {label:'ICON', key:'icon', color:'#7FE0E8'},
     {label:'ECMWF',key:'ecmwf',color:'#9C7BD0'},
     {label:'GFS',  key:'gfs',  color:'#E3B24A'}
   ];
-  var gArr=[],rArr=[];
-  entries.forEach(function(e){var m=models[e.key];if(m){if(m.gust!=null)gArr.push(m.gust);if(m.rain!=null)rArr.push(m.rain);}});
-  var minG=Math.min.apply(Math,gArr),maxG=Math.max.apply(Math,gArr);
-  var minR=Math.min.apply(Math,rArr),maxR=Math.max.apply(Math,rArr);
-  function bw(val,arr,low){if(val==null)return'';var best=low?Math.min.apply(Math,arr):Math.max.apply(Math,arr);var worst=low?Math.max.apply(Math,arr):Math.min.apply(Math,arr);return val===best?'best':val===worst?'worst':'';}
+  // Show next 4 days (or however many are available)
+  var days4=B.days.slice(0,4);
+  if(!days4.length||!days4[0].confidence||!days4[0].confidence.models){
+    mb.innerHTML='<div class="loading">Keine Multi-Modell-Daten verfügbar</div>';return;
+  }
 
-  var rows='';
-  entries.forEach(function(e){
-    var m=models[e.key];if(!m)return;
-    rows+='<tr><td style="color:'+e.color+'">'+e.label+'</td><td class="'+bw(m.gust,gArr,true)+'">'+fmt(m.gust)+' km/h</td><td class="'+bw(m.rain,rArr,true)+'">'+fmt(m.rain)+' mm</td><td>'+(conf.models_agree===true?'<span style="color:#4FA47F">\u2713</span>':conf.models_agree===false?'<span style="color:#EF8A4C">\u2717</span>':'\u2013')+'</td></tr>';
+  function angDiff(a,b){if(a==null||b==null)return 0;var diff=Math.abs(a-b);return diff>180?360-diff:diff;}
+
+  var html='<div class="mc-grid">';
+  days4.forEach(function(day){
+    var conf=day.confidence||{},models=conf.models||{};
+    var dt=new Date(day.date+'T12:00');
+    var isSel=day.date===d.date;
+    var iconDir=(models.icon||{}).wind_dir;
+
+    // Collect gust array for best/worst marking
+    var gArr=entries.map(function(e){return(models[e.key]||{}).gust;}).filter(function(x){return x!=null;});
+    function bw(val,arr){if(val==null||!arr.length)return'';var mn=Math.min.apply(Math,arr),mx=Math.max.apply(Math,arr);return val===mn?'best':val===mx?'worst':'';}
+
+    var rows='';
+    entries.forEach(function(e){
+      var m=models[e.key];if(!m)return;
+      var dirTxt=m.wind_dir!=null?card16(m.wind_dir):'–';
+      var dirStyle='';
+      if(e.key!=='icon'&&angDiff(m.wind_dir,iconDir)>45){
+        dirStyle='color:#f59e0b;font-weight:600';dirTxt+=' ⚠';
+      }
+      var cwDir='';
+      if(m.wind_dir!=null){
+        var alpha=(m.wind_dir-90)*Math.PI/180;
+        var cw=Math.round(Math.abs((m.wind_speed||0)*Math.sin(alpha)));
+        cwDir=' <span style="color:'+(cw>25?'#ef4444':cw>15?'#f59e0b':'var(--ink-faint)')+';font-size:10px">⊥'+cw+'</span>';
+      }
+      rows+='<tr>'
+        +'<td style="color:'+e.color+';font-weight:600">'+e.label+'</td>'
+        +'<td>'+fmt(m.wind_speed)+' km/h'+cwDir+'</td>'
+        +'<td style="'+dirStyle+'" data-tip="dir">'+dirTxt+'</td>'
+        +'<td class="'+bw(m.gust,gArr)+'">'+fmt(m.gust)+'</td>'
+        +'<td>'+fmt(m.rain)+' mm</td>'
+        +'</tr>';
+    });
+
+    var agreeEl=conf.models_agree===true?'<span style="color:#10b981;font-size:10px">✓ einig</span>'
+      :conf.models_agree===false?'<span style="color:#f59e0b;font-size:10px">⚠ uneinig</span>':'';
+
+    html+='<div class="mc-day'+(isSel?' mc-day-sel':'')+'"><div class="mc-day-hdr">'
+      +day.weekday+' '+dt.getDate()+'.'+(dt.getMonth()+1)+'. '+agreeEl+'</div>'
+      +'<table class="model-table mc-tbl"><thead><tr><th>Modell</th><th data-tip="avgWind">Wind</th>'
+      +'<th data-tip="dir">Richtg.</th><th data-tip="maxGust">Böen</th><th data-tip="precip">Regen</th></tr></thead>'
+      +'<tbody>'+rows+'</tbody></table>'
+      +'<div style="font-size:9px;color:var(--ink-faint);margin-top:3px">Streuung Böen: '+(conf.gust_spread_kmh||'–')+' km/h</div>'
+      +'</div>';
   });
-
-  var gMax=Math.max(maxG,1);
-  var bars='';
-  entries.forEach(function(e){
-    var m=models[e.key];if(!m)return;
-    bars+='<div class="model-bar-row"><span class="mlabel" style="color:'+e.color+'">'+e.label+'</span><div class="mbar" style="width:'+((m.gust||0)/gMax*100)+'%;background:'+e.color+';opacity:.6"></div><span class="mval">'+fmt(m.gust)+'</span></div>';
-  });
-  bars+='<div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--ink-faint);margin-top:2px">\u2190 B\u00f6en km/h (relativ zum Maximum)</div>';
-
-  mb.innerHTML='<table class="model-table"><thead><tr><th>Modell</th><th>Max B\u00f6en</th><th>Niederschlag</th><th>Einig?</th></tr></thead><tbody>'+rows+'</tbody></table><div class="model-bars">'+bars+'</div><div style="margin-top:6px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--ink-faint)">Streuung B\u00f6en: '+(conf.gust_spread_kmh||'\u2013')+' km/h \u00b7 '+(conf.note||'\u2013')+'</div>';
+  html+='</div>';
+  html+='<div style="font-size:9px;color:var(--ink-faint);margin-top:8px">⊥ = Querwind-Anteil zur Schleppachse O/W · ⚠ = Windrichtung >45° abweichend von ICON · grün=bestes/rot=höchstes Modell</div>';
+  mb.innerHTML=html;
 }
 
 /* ---------- windy ---------- */
