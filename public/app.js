@@ -40,7 +40,7 @@ const $ = id => document.getElementById(id);
 let B = null, selected = null, mode = 'day';
 const todayISO = new Date().toISOString().slice(0,10);
 
-function flyColor(f){if(f==null)return'#44617C';if(f>=0.85)return'#EF8A4C';if(f>=0.72)return'#E3B24A';if(f>=0.60)return'#8FB95C';if(f>=0.45)return'#4FA47F';if(f>=0.30)return'#3E8E9A';return'#44617C';}
+function flyColor(f){if(f==null)return'#44617C';if(f>=0.85)return'#10b981';if(f>=0.72)return'#8FB95C';if(f>=0.60)return'#E3B24A';if(f>=0.45)return'#EF8A4C';if(f>=0.30)return'#DC2626';return'#44617C';}
 function subText(level){return['Geringe Flugwahrscheinlichkeit für die lokale Szene.','Eher zäh — nur mit gutem Stundenfenster.','Geht wahrscheinlich — hängt am Detail. Wind & Böen unten entscheiden.','Gute Chancen. Auf Böen und Tagesfenster achten.','Klar fliegbare Bedingungen. Stundenfenster prüfen.'][level] ?? '';}
 function card16(d){return['N','NNO','NO','ONO','O','OSO','SO','SSO','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];}
 function compress(hs){if(!hs.length)return[];const o=[];let s=hs[0],p=hs[0];for(let i=1;i<hs.length;i++){if(hs[i]===p+1)p=hs[i];else{o.push(s===p?`${s}h`:`${s}-${p+1}h`);s=p=hs[i];}}o.push(s===p?`${s}h`:`${s}-${p+1}h`);return o;}
@@ -579,7 +579,7 @@ function renderModelComparison(d){
   function windArrow(deg){
     if(deg==null)return'';
     var arrows=['↑','↗','→','↘','↓','↙','←','↖'];
-    return arrows[Math.round(deg/45)%8];
+    return arrows[Math.round((deg+180)/45)%8];
   }
 
   // Tabelle: Zeilen = Uhrzeiten, Spalten = Modelle
