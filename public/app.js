@@ -2,9 +2,9 @@
    Consumes /api/briefing (backend). Falls back to direct calls if no backend. */
 
 const GLOSSARY = {
-  fly:        ['fly', 'Paraglidable-KI: Wahrscheinlichkeit, dass an dem Tag überhaupt geflogen/gemeldet wird (0–100%). Quelle: Paraglidable API.'],
+  fly:        ['fly', 'Paraglidable-KI: Wahrscheinlichkeit, dass an dem Tag überhaupt geflogen/gemeldet wird (0–100%). <span style="color:#10b981">Grün</span> = gut fliegbar · <span style="color:#E3B24A">Gelb</span> = mittel · <span style="color:#EF8A4C">Orange</span> = schwierig · <span style="color:#DC2626">Rot</span> = eher nicht. Quelle: Paraglidable API.'],
   xc:         ['XC', 'Wahrscheinlichkeit für einen 60+-Punkte-Streckenflug (PWC-Wertung). An Schleppgeländen meist niedrig. Quelle: Paraglidable API.'],
-  verdict:    ['Verdict', 'Gesamteinschätzung aus fly plus Wind/Böen/Thermik.'],
+  verdict:    ['Verdict', 'Gesamteinschätzung aus fly plus Wind/Böen/Thermik. <span style="color:#10b981">Grün</span> = gute Flugbedingungen · <span style="color:#E3B24A">Gelb/Orange</span> = eingeschränkt · <span style="color:#DC2626">Rot</span> = eher nicht fliegbar.'],
   avgWind:    ['Ø Bodenwind', 'Mittlerer Wind in 10 m über das Fenster 9–20 h. Fürs Schleppen brauchst du stetigen Gegenwind. Quelle: DWD ICON via Open-Meteo.'],
   maxGust:    ['Max Böe (km/h)', 'Stärkste Böe im Tagesfenster — der kritische Wert beim Windenschlepp. >32 km/h = böig, >40 km/h = kritisch. Quelle: DWD ICON via Open-Meteo.'],
   gustFactor: ['Böenfaktor', 'Böe geteilt durch Mittelwind. Über ~1,8 wird es böig und ruppig.'],
@@ -19,7 +19,7 @@ const GLOSSARY = {
   cloud:      ['Bewölkung (%)', 'Mittlere Gesamtbewölkung; Klammer = tief/mittel/hoch. Quelle: DWD ICON via Open-Meteo.'],
   precip:     ['Regen (%)', 'Maximale Niederschlagswahrscheinlichkeit im Fenster. Quelle: DWD ICON via Open-Meteo.'],
   dir:        ['Windrichtung', 'Pfeile zeigen die Schlepprichtung, also wohin der Wind weht. Schirm in Pfeilrichtung ausrichten.'],
-  confidence: ['Konfidenz', 'Stimmen ICON, ECMWF und GFS überein? Übereinstimmung = verlässlicher. Quelle: Open-Meteo Multi-Modell.'],
+  confidence: ['Konfidenz', 'Stimmen ICON, ECMWF und GFS überein? <span style="color:#1a56db">Blau</span> = Modelle einig (verlässlicher) · <span style="color:#f59e0b">Orange</span> = Modelle uneinig (weniger verlässlich). Quelle: Open-Meteo Multi-Modell.'],
   warning:    ['DWD-Warnung', 'Amtliche Unwetterwarnung des DWD (über Bright Sky API).'],
   crosswind:  ['Querwind (Crosswind)', 'Windkomponente quer zur Schlepprichtung O/W (90°/270°). ≤15 km/h = ok für Start · >15 km/h = aufpassen · >25 km/h = kritisch. Berechnung: ws·|sin(wd−90°)|.'],
   headwind:   ['Längswind', 'Windkomponente entlang der Schlepprichtung. Positiv (Gegenwind) = ideal für Schlepp in der angezeigten Richtung. Negativ = Rückenwind. Berechnung: ws·cos(wd−90°).']
@@ -162,7 +162,7 @@ function renderRibbon(){
   B.days.forEach(d=>{
     const f=d.paraglidable.fly,xc=d.paraglidable.xc,c=flyColor(f),dt=new Date(d.date+'T12:00');
     const conf=d.confidence&&d.confidence.models_agree;
-    const dot=conf===true?'#4FA47F':conf===false?'#EF8A4C':'transparent';
+    const dot=conf===true?'#1a56db':conf===false?'#f59e0b':'transparent';
     const el=document.createElement('button');
     el.className='cell'+(d.date===todayISO?' today':'');
     el.style.setProperty('--cellc',c); el.dataset.date=d.date;
@@ -376,7 +376,7 @@ function renderWeek(){
   tb.innerHTML=B.days.map(d=>{
     const c=flyColor(d.paraglidable.fly),w=d.wind||{},th=d.thermal||{},sk=d.sky||{},dt=new Date(d.date+'T12:00');
     const conf=d.confidence&&d.confidence.models_agree;
-    const confTxt=conf===true?'<span style="color:#10b981">einig</span>':conf===false?'<span style="color:#f59e0b">uneinig</span>':'–';
+    const confTxt=conf===true?'<span style="color:#1a56db">einig</span>':conf===false?'<span style="color:#f59e0b">uneinig</span>':'–';
     return `<tr data-date="${d.date}" class="${d.date===todayISO?'today':''}">
       <td><span class="flytag" style="background:${c}">${d.paraglidable.fly!=null?Math.round(d.paraglidable.fly*100):'–'}</span></td>
       <td>${d.paraglidable.xc!=null?Math.round(d.paraglidable.xc*100):'–'}%</td>
